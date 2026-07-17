@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "../_lib/db";
+import { db } from "../lib/db";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;

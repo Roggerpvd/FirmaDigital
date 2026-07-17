@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "../_lib/db";
+import { db } from "../lib/db";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
@@ -7,23 +7,6 @@ function getCookie(req: VercelRequest, name: string): string | null {
   const match = cookies.split("; ").find((c) => c.startsWith(`${name}=`));
   return match ? match.split("=")[1] : null;
 }
-
-// src/api/auth.ts
-
-import type { Session } from "../types/session";
-
-export async function fetchCurrentSession(): Promise<Session | null> {
-  const res = await fetch("/api/auth/me", {
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    return null;
-  }
-
-  return res.json();
-}
-
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") {
