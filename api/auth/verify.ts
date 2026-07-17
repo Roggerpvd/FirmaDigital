@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "crypto";
-import { db } from "../lib/db";
+import { db } from "../lib/db.js";
 
 const EMPLOYEE_SESSION_HOURS = 12;
 
