@@ -135,17 +135,35 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
 // ...
 
-const handleSubmit = () => {
-  setStep("submitting");
-  setTimeout(() => {
-    const now = new Date().toLocaleString("es-PE", {
-      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-    });
-    setSignedAt(now);
-    markPayslipAsSigned(payslip.id);
-    setStep("success");
-  }, 1400);
-};
+const handleSubmit = async () => {
+    setStep("submitting");
+
+    try {
+      const canvas = canvasRef.current;
+      const finalSignature = signMode === "draw" && canvas ? canvas.toDataURL("image/png") : signatureDataUrl;
+
+      const res = await fetch(`/api/payslips/${payslip.id}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ signatureDataUrl: finalSignature }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "No se pudo firmar la boleta");
+        setStep("confirm");
+        return;
+      }
+
+      setSignedAt(data.signedAt);
+      setStep("success");
+    } catch {
+      alert("No se pudo conectar con el servidor");
+      setStep("confirm");
+    }
+  };
 
   const handleDownloadProof = () => {
     if (!signatureDataUrl) return;
