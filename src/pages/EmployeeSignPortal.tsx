@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { markPayslipAsSigned } from "../store/payslipStore";
 
 interface PayslipData {
   id: string;
