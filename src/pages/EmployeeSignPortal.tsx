@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { fetchMySignature } from "../api/signature";
 
 interface PayslipData {
   id: string;
@@ -34,10 +35,22 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
   const [canvasIsEmpty, setCanvasIsEmpty] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [signedAt, setSignedAt] = useState<string>("");
+  const [checkingSavedSignature, setCheckingSavedSignature] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const lastPoint = useRef<{ x: number; y: number } | null>(null);
+
+  // Revisa si el empleado ya tiene una firma guardada; si es así, salta directo a confirmar
+  useEffect(() => {
+    fetchMySignature().then((saved) => {
+      if (saved) {
+        setSignatureDataUrl(saved);
+        setStep("confirm");
+      }
+      setCheckingSavedSignature(false);
+    });
+  }, []);
 
   // Prepara el canvas (tamaño real en píxeles según su tamaño en pantalla, para que no se vea borroso)
   useEffect(() => {
@@ -131,15 +144,12 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
   const canContinue = signMode === "draw" ? !canvasIsEmpty : !!signatureDataUrl;
 
-
-// ...
-
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     setStep("submitting");
 
     try {
       const canvas = canvasRef.current;
-      const finalSignature = signMode === "draw" && canvas ? canvas.toDataURL("image/png") : signatureDataUrl;
+      const finalSignature = signMode === "draw" && canvas && !canvasIsEmpty ? canvas.toDataURL("image/png") : signatureDataUrl;
 
       const res = await fetch(`/api/payslips/${payslip.id}/sign`, {
         method: "POST",
@@ -234,8 +244,15 @@ const handleSubmit = async () => {
           </div>
         </div>
 
+        {/* Cargando: revisando si ya existe una firma guardada */}
+        {checkingSavedSignature && (
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm flex items-center justify-center py-16">
+            <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
+          </div>
+        )}
+
         {/* Paso: revisión de la boleta */}
-        {step === "review" && (
+        {!checkingSavedSignature && step === "review" && (
           <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
             <div className="flex items-center justify-between mb-lg">
               <h2 className="font-headline-md text-headline-md text-primary">Tu Boleta de Pago</h2>
@@ -369,7 +386,6 @@ const handleSubmit = async () => {
           <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
             <div className="flex items-center justify-between mb-lg">
               <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Confirma tu Firma</h2>
-              <button onClick={() => setStep("signing")} className="material-symbols-outlined text-outline hover:text-primary transition-colors">arrow_back</button>
             </div>
 
             <div className="bg-surface-container-low border border-outline-variant rounded-lg p-lg mb-lg flex items-center justify-center h-40">
@@ -396,6 +412,18 @@ const handleSubmit = async () => {
               <span className="material-symbols-outlined text-[20px]">send</span>
               Enviar Boleta Firmada
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSignatureDataUrl(null);
+                setAgreed(false);
+                setStep("signing");
+              }}
+              className="w-full mt-sm text-[12px] text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Usar una firma diferente
+            </button>
           </div>
         )}
 
@@ -418,21 +446,21 @@ const handleSubmit = async () => {
               Tu boleta {payslip.id} fue firmada y enviada correctamente el {signedAt}.
             </p>
             <div className="flex flex-col gap-sm">
-            <button
-              onClick={handleDownloadProof}
-              className="w-full bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
-            >
-              <span className="material-symbols-outlined text-[20px]">download</span>
-              Descargar comprobante
-            </button>
-            <Link
-              to="/mis-boletas"
-              className="w-full text-center bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm"
-            >
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-              Volver a Mis Boletas
-            </Link>
-          </div>
+              <button
+                onClick={handleDownloadProof}
+                className="w-full bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
+              >
+                <span className="material-symbols-outlined text-[20px]">download</span>
+                Descargar comprobante
+              </button>
+              <Link
+                to="/"
+                className="w-full text-center bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm"
+              >
+                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                Volver a Mis Boletas
+              </Link>
+            </div>
           </div>
         )}
       </div>

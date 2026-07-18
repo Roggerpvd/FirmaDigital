@@ -38,14 +38,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { code } = req.query as { code?: string };
-    const { signatureDataUrl } = (req.body ?? {}) as { signatureDataUrl?: string };
+    const { signatureDataUrl: providedSignature } = (req.body ?? {}) as { signatureDataUrl?: string };
 
     if (!code) {
       return res.status(400).json({ error: "Código de boleta requerido" });
     }
 
+    // Si no se envió una firma nueva, usa la firma maestra guardada del empleado
+    let signatureDataUrl = providedSignature;
     if (!signatureDataUrl) {
-      return res.status(400).json({ error: "Falta la imagen de la firma" });
+      const employeeResult = await db.sql`
+        SELECT signature_data_url FROM employees WHERE id = ${session.employee_id}
+      `;
+      signatureDataUrl = employeeResult.rows[0]?.signature_data_url;
+    }
+
+    if (!signatureDataUrl) {
+      return res.status(400).json({ error: "No tienes una firma guardada. Crea tu firma primero." });
+    }
+
+    // Si se envió una firma nueva (primera vez), la guardamos también como la firma maestra
+    if (providedSignature) {
+      await db.sql`
+        UPDATE employees SET signature_data_url = ${providedSignature} WHERE id = ${session.employee_id}
+      `;
     }
 
     // Verifica que la boleta exista, pertenezca a este empleado, y esté pendiente
