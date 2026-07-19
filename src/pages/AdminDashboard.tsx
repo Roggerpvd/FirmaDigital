@@ -8,6 +8,8 @@ import {
   type AdminDocument,
   type AdminEmployee,
 } from "../api/admin";
+import { fetchPayslipProof } from "../api/admin";
+
 
 const statusLabel = (status: "Signed" | "Pending") => (status === "Signed" ? "Firmado" : "Pendiente");
 
@@ -216,6 +218,20 @@ function AdminDashboard() {
     element.click();
     document.body.removeChild(element);
     setToast({ message: "Reporte CSV descargado.", type: "success" });
+  };
+
+  const handleDownloadProof = async (payslipId: string) => {
+    try {
+      const dataUrl = await fetchPayslipProof(payslipId);
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${payslipId}_firmada.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      setToast({ message: err.message || "No se pudo descargar el comprobante.", type: "error" });
+    }
   };
 
   const getInitials = (name: string) => {
@@ -445,6 +461,7 @@ function AdminDashboard() {
                         <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider">ID de Boleta</th>
                         <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider">Estado</th>
                         <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider">Fecha de Firma</th>
+                        <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant dark:divide-slate-800">
@@ -481,11 +498,22 @@ function AdminDashboard() {
                             <td className="px-xl py-md">
                               <span className="font-body-md text-body-md text-on-surface-variant dark:text-slate-300">{doc.date}</span>
                             </td>
+                            <td className="px-xl py-md text-right">
+                              {doc.status === "Signed" && (
+                                <button
+                                  onClick={() => handleDownloadProof(doc.payslipId)}
+                                  className="material-symbols-outlined text-primary dark:text-sky-400 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
+                                  title="Descargar comprobante firmado"
+                                >
+                                  download
+                                </button>
+                              )}
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={4} className="px-xl py-xl text-center text-on-surface-variant dark:text-slate-400">
+                          <td colSpan={5} className="px-xl py-xl text-center text-on-surface-variant dark:text-slate-400">
                             No hay boletas registradas todavía.
                           </td>
                         </tr>

@@ -36,6 +36,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
     if (filterTab === "pending") return p.status === "Pending";
     return true;
   });
+  
 
   const handleDownload = (payslip: EmployeePayslip) => {
     downloadPayslipProof(employee, payslip);
@@ -113,5 +114,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
     </div>
   );
 }
+
+
 
 export default EmployeeDashboard;

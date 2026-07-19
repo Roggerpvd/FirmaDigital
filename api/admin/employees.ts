@@ -11,7 +11,6 @@ function getCookie(req: VercelRequest, name: string): string | null {
 }
 
 function generateRandomPassword(): string {
-  // Genera una contraseña legible tipo "Xk7mPq2Rt9"
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let password = "";
   const bytes = crypto.randomBytes(10);

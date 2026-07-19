@@ -151,11 +151,25 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       const canvas = canvasRef.current;
       const finalSignature = signMode === "draw" && canvas && !canvasIsEmpty ? canvas.toDataURL("image/png") : signatureDataUrl;
 
+      // Genera el comprobante usando la firma que se va a enviar, no la del estado (puede no haberse actualizado aún)
+      const tempSignatureForProof = finalSignature;
+      let proofImageUrl: string | undefined;
+      if (tempSignatureForProof) {
+        const previousSignature = signatureDataUrl;
+        setSignatureDataUrl(tempSignatureForProof);
+        try {
+          proofImageUrl = await generateProofImage();
+        } catch {
+          proofImageUrl = undefined;
+        }
+        if (!previousSignature) setSignatureDataUrl(tempSignatureForProof);
+      }
+
       const res = await fetch(`/api/payslips/${payslip.id}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ signatureDataUrl: finalSignature }),
+        body: JSON.stringify({ signatureDataUrl: finalSignature, proofImageUrl }),
       });
 
       const data = await res.json();
@@ -174,53 +188,72 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
     }
   };
 
-  const handleDownloadProof = () => {
-    if (!signatureDataUrl) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = 700;
-    canvas.height = 500;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  const generateProofImage = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!signatureDataUrl) {
+        reject(new Error("Falta la firma"));
+        return;
+      }
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#c6c6cd";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+      const canvas = document.createElement("canvas");
+      canvas.width = 700;
+      canvas.height = 500;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("No se pudo crear el comprobante"));
+        return;
+      }
 
-    ctx.fillStyle = "#191c1e";
-    ctx.font = "bold 22px Inter, sans-serif";
-    ctx.fillText("Boleta de Pago — Firmada Digitalmente", 50, 70);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#c6c6cd";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
-    ctx.font = "14px Inter, sans-serif";
-    ctx.fillStyle = "#45464d";
-    const lines = [
-      `ID de Boleta: ${payslip.id}`,
-      `Empleado: ${payslip.employeeName} (${payslip.employeeCode})`,
-      `Período: ${payslip.period}`,
-      `Neto a pagar: ${payslip.netAmount}`,
-      `Fecha de emisión: ${payslip.issueDate}`,
-      `Firmado el: ${signedAt}`,
-    ];
-    lines.forEach((line, i) => ctx.fillText(line, 50, 115 + i * 26));
+      ctx.fillStyle = "#191c1e";
+      ctx.font = "bold 22px Inter, sans-serif";
+      ctx.fillText("Boleta de Pago — Firmada Digitalmente", 50, 70);
 
-    ctx.font = "12px Inter, sans-serif";
-    ctx.fillStyle = "#76777d";
-    ctx.fillText("Firma del empleado:", 50, 300);
-    ctx.strokeStyle = "#c6c6cd";
-    ctx.strokeRect(50, 315, 280, 120);
+      ctx.font = "14px Inter, sans-serif";
+      ctx.fillStyle = "#45464d";
+      const lines = [
+        `ID de Boleta: ${payslip.id}`,
+        `Empleado: ${payslip.employeeName} (${payslip.employeeCode})`,
+        `Período: ${payslip.period}`,
+        `Neto a pagar: ${payslip.netAmount}`,
+        `Fecha de emisión: ${payslip.issueDate}`,
+        `Firmado el: ${signedAt || new Date().toLocaleString("es-PE")}`,
+      ];
+      lines.forEach((line, i) => ctx.fillText(line, 50, 115 + i * 26));
 
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 60, 325, 260, 100);
+      ctx.font = "12px Inter, sans-serif";
+      ctx.fillStyle = "#76777d";
+      ctx.fillText("Firma del empleado:", 50, 300);
+      ctx.strokeStyle = "#c6c6cd";
+      ctx.strokeRect(50, 315, 280, 120);
+
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 60, 325, 260, 100);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("No se pudo cargar la firma"));
+      img.src = signatureDataUrl;
+    });
+  };
+
+  const handleDownloadProof = async () => {
+    try {
+      const dataUrl = await generateProofImage();
       const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.download = `${payslip.id}_firmada.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    };
-    img.src = signatureDataUrl;
+    } catch {
+      alert("No se pudo generar el comprobante");
+    }
   };
 
   const getInitials = (name: string) => {

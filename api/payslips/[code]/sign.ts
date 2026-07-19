@@ -38,11 +38,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { code } = req.query as { code?: string };
-    const { signatureDataUrl: providedSignature } = (req.body ?? {}) as { signatureDataUrl?: string };
-
-    if (!code) {
-      return res.status(400).json({ error: "Código de boleta requerido" });
-    }
+    const { signatureDataUrl: providedSignature, proofImageUrl } = (req.body ?? {}) as {
+      signatureDataUrl?: string;
+      proofImageUrl?: string;
+    };
 
     // Si no se envió una firma nueva, usa la firma maestra guardada del empleado
     let signatureDataUrl = providedSignature;
@@ -82,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await db.sql`
       UPDATE payslips 
-      SET status = 'signed', signature_data_url = ${signatureDataUrl}, signed_at = ${signedAt.toISOString()}
+      SET status = 'signed', signature_data_url = ${signatureDataUrl}, signed_at = ${signedAt.toISOString()}, proof_image_url = ${proofImageUrl || null}
       WHERE id = ${checkResult.rows[0].id}
     `;
 
