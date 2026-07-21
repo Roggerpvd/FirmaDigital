@@ -70,3 +70,42 @@ export async function fetchPayslipProof(payslipCode: string): Promise<string> {
   if (!res.ok) throw new Error(data.error || "No se pudo obtener el comprobante");
   return data.proofImageUrl;
 }
+
+export const downloadAdminPayslip = async (payslipCode: string) => {
+  const response = await fetch(
+    `/api/admin/payslips/download?payslipCode=${encodeURIComponent(payslipCode)}`,
+    { credentials: "include" }
+  );
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Error al descargar" }));
+    throw new Error(err.error || "Error al descargar el PDF");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${payslipCode}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export async function uploadAdminPayslip(payload: {
+  employeeEmail: string;
+  payslipCode: string;
+  period: string;
+  issueDate: string;
+  pdfBase64: string;
+}): Promise<void> {
+  const res = await fetch("/api/admin/payslips/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "No se pudo subir la boleta");
+}

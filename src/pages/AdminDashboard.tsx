@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+
 import {
   fetchAdminDocuments,
   fetchAdminEmployees,
   createAdminEmployee,
-  createAdminPayslip,
+  uploadAdminPayslip,
+  downloadAdminPayslip,
+  fetchPayslipProof,
   type AdminDocument,
   type AdminEmployee,
 } from "../api/admin";
-import { fetchPayslipProof } from "../api/admin";
-
 
 const statusLabel = (status: "Signed" | "Pending") => (status === "Signed" ? "Firmado" : "Pendiente");
 
@@ -19,20 +20,19 @@ function AdminDashboard() {
   const [loadingData, setLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"dashboard" | "batches" | "employees" | "reports" | "settings">("batches");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "batches" | "employees" | "reports">("batches");
   const [filterTab, setFilterTab] = useState<"all" | "pending" | "signed">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Modal: Nuevo Lote (boleta)
+  // Modal: Subir Boleta (PDF)
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [newPayslipEmail, setNewPayslipEmail] = useState("");
   const [newPayslipCode, setNewPayslipCode] = useState("");
   const [newPayslipPeriod, setNewPayslipPeriod] = useState("");
-  const [newPayslipAmount, setNewPayslipAmount] = useState("");
   const [newPayslipIssueDate, setNewPayslipIssueDate] = useState("");
-  const [newPayslipStatus, setNewPayslipStatus] = useState<"pending" | "signed">("pending");
+  const [newPayslipFile, setNewPayslipFile] = useState<File | null>(null);
   const [creatingBatch, setCreatingBatch] = useState(false);
 
   // Modal: Agregar Empleado
@@ -100,33 +100,38 @@ function AdminDashboard() {
 
   const handleCreatePayslip = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPayslipEmail || !newPayslipCode || !newPayslipPeriod || !newPayslipAmount || !newPayslipIssueDate) {
-      setToast({ message: "Completa todos los campos obligatorios.", type: "info" });
+    if (!newPayslipEmail || !newPayslipCode || !newPayslipPeriod || !newPayslipIssueDate || !newPayslipFile) {
+      setToast({ message: "Completa todos los campos y adjunta el PDF.", type: "info" });
       return;
     }
 
     setCreatingBatch(true);
     try {
-      await createAdminPayslip({
+      const pdfBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+        reader.readAsDataURL(newPayslipFile);
+      });
+
+      await uploadAdminPayslip({
         employeeEmail: newPayslipEmail,
         payslipCode: newPayslipCode,
         period: newPayslipPeriod,
-        netAmount: parseFloat(newPayslipAmount),
         issueDate: newPayslipIssueDate,
-        status: newPayslipStatus,
+        pdfBase64,
       });
 
-      setToast({ message: `Boleta ${newPayslipCode} creada correctamente.`, type: "success" });
+      setToast({ message: `Boleta ${newPayslipCode} subida correctamente.`, type: "success" });
       setShowBatchModal(false);
       setNewPayslipEmail("");
       setNewPayslipCode("");
       setNewPayslipPeriod("");
-      setNewPayslipAmount("");
       setNewPayslipIssueDate("");
-      setNewPayslipStatus("pending");
+      setNewPayslipFile(null);
       loadData();
     } catch (err: any) {
-      setToast({ message: err.message || "No se pudo crear la boleta.", type: "error" });
+      setToast({ message: err.message || "No se pudo subir la boleta.", type: "error" });
     } finally {
       setCreatingBatch(false);
     }
@@ -159,6 +164,28 @@ function AdminDashboard() {
       setToast({ message: err.message || "No se pudo crear el empleado.", type: "error" });
     } finally {
       setCreatingEmployee(false);
+    }
+  };
+
+  const handleDownloadPdf = async (payslipCode: string) => {
+    try {
+      await downloadAdminPayslip(payslipCode);
+    } catch (err: any) {
+      setToast({ message: err.message || "No se pudo descargar el PDF.", type: "error" });
+    }
+  };
+
+  const handleDownloadProof = async (payslipId: string) => {
+    try {
+      const dataUrl = await fetchPayslipProof(payslipId);
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${payslipId}_firmada.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      setToast({ message: err.message || "No se pudo descargar el comprobante.", type: "error" });
     }
   };
 
@@ -218,20 +245,6 @@ function AdminDashboard() {
     element.click();
     document.body.removeChild(element);
     setToast({ message: "Reporte CSV descargado.", type: "success" });
-  };
-
-  const handleDownloadProof = async (payslipId: string) => {
-    try {
-      const dataUrl = await fetchPayslipProof(payslipId);
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `${payslipId}_firmada.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err: any) {
-      setToast({ message: err.message || "No se pudo descargar el comprobante.", type: "error" });
-    }
   };
 
   const getInitials = (name: string) => {
@@ -414,8 +427,8 @@ function AdminDashboard() {
                     onClick={() => setShowBatchModal(true)}
                     className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-sm shadow-sm"
                   >
-                    <span className="material-symbols-outlined text-[20px]">add</span>
-                    Nueva Boleta
+                    <span className="material-symbols-outlined text-[20px]">upload_file</span>
+                    Subir Boleta
                   </button>
                 </div>
               </div>
@@ -499,15 +512,24 @@ function AdminDashboard() {
                               <span className="font-body-md text-body-md text-on-surface-variant dark:text-slate-300">{doc.date}</span>
                             </td>
                             <td className="px-xl py-md text-right">
-                              {doc.status === "Signed" && (
+                              <div className="flex items-center justify-end gap-xs">
                                 <button
-                                  onClick={() => handleDownloadProof(doc.payslipId)}
+                                  onClick={() => handleDownloadPdf(doc.payslipId)}
                                   className="material-symbols-outlined text-primary dark:text-sky-400 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
-                                  title="Descargar comprobante firmado"
+                                  title="Descargar PDF"
                                 >
-                                  download
+                                  picture_as_pdf
                                 </button>
-                              )}
+                                {doc.status === "Signed" && (
+                                  <button
+                                    onClick={() => handleDownloadProof(doc.payslipId)}
+                                    className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
+                                    title="Descargar comprobante firmado"
+                                  >
+                                    download
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -614,7 +636,6 @@ function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Lista completa de empleados registrados */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md mb-xl">
                 {employees
                   .filter(emp =>
@@ -695,14 +716,14 @@ function AdminDashboard() {
         </div>
       </main>
 
-      {/* Modal: Nueva Boleta */}
+      {/* Modal: Subir Boleta (PDF) */}
       {showBatchModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 w-full max-w-md rounded-xl p-xl shadow-xl">
             <div className="flex items-center justify-between mb-lg">
               <div className="flex items-center gap-sm text-primary dark:text-slate-100">
-                <span className="material-symbols-outlined text-[24px]">post_add</span>
-                <h3 className="font-headline-sm text-headline-sm font-bold">Nueva Boleta</h3>
+                <span className="material-symbols-outlined text-[24px]">upload_file</span>
+                <h3 className="font-headline-sm text-headline-sm font-bold">Subir Boleta (PDF)</h3>
               </div>
               <button onClick={() => setShowBatchModal(false)} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
             </div>
@@ -733,23 +754,25 @@ function AdminDashboard() {
                 <input type="text" required value={newPayslipPeriod} onChange={(e) => setNewPayslipPeriod(e.target.value)} placeholder="ej. Diciembre 2026" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
               </div>
 
-              <div className="grid grid-cols-2 gap-md">
-                <div>
-                  <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Monto Neto (S/) *</label>
-                  <input type="number" step="0.01" required value={newPayslipAmount} onChange={(e) => setNewPayslipAmount(e.target.value)} placeholder="2850.00" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
-                </div>
-                <div>
-                  <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Fecha de Emisión *</label>
-                  <input type="date" required value={newPayslipIssueDate} onChange={(e) => setNewPayslipIssueDate(e.target.value)} className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
-                </div>
+              <div>
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Fecha de Emisión *</label>
+                <input type="date" required value={newPayslipIssueDate} onChange={(e) => setNewPayslipIssueDate(e.target.value)} className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Estado</label>
-                <select value={newPayslipStatus} onChange={(e) => setNewPayslipStatus(e.target.value as "pending" | "signed")} className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500">
-                  <option value="pending">Pendiente</option>
-                  <option value="signed">Firmado</option>
-                </select>
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Archivo PDF de la Boleta *</label>
+                <label className="custom-dashed h-32 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low dark:hover:bg-slate-800 transition-colors relative">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setNewPayslipFile(e.target.files?.[0] || null)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <span className="material-symbols-outlined text-[32px] text-outline opacity-40">picture_as_pdf</span>
+                  <p className="text-[12px] text-on-surface-variant dark:text-slate-400">
+                    {newPayslipFile ? newPayslipFile.name : "Haz clic para seleccionar el PDF"}
+                  </p>
+                </label>
               </div>
 
               <div className="pt-md flex items-center justify-end gap-md">
@@ -757,7 +780,7 @@ function AdminDashboard() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={creatingBatch} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-colors shadow-sm disabled:opacity-50">
-                  {creatingBatch ? "Creando..." : "Guardar"}
+                  {creatingBatch ? "Subiendo..." : "Subir Boleta"}
                 </button>
               </div>
             </form>
@@ -825,6 +848,7 @@ function AdminDashboard() {
             <div className="space-y-md">
               {[
                 { q: "¿Cómo firmo una boleta?", a: "El empleado inicia sesión con su correo y contraseña, y firma directamente desde su boleta pendiente." },
+                { q: "¿Cómo subo una boleta nueva?", a: "Ve a la pestaña Lotes de Boletas y usa el botón 'Subir Boleta'. Selecciona el empleado, completa los datos, y adjunta el PDF." },
                 { q: "¿Cómo agrego un empleado nuevo?", a: "Ve a la pestaña Empleados y usa el botón 'Agregar Empleado'. El sistema genera una contraseña temporal para comunicarle." },
                 { q: "¿Puedo exportar los datos?", a: "Sí, desde la pestaña Reportes puedes exportar un CSV con todos los registros." }
               ].map(item => (

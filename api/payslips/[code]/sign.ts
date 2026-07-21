@@ -1,4 +1,8 @@
+// api/payslips/[code]/sign.ts
+
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { PDFDocument } from "pdf-lib";
+import { put } from "@vercel/blob";
 import { db } from "../../lib/db.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
@@ -7,6 +11,14 @@ function getCookie(req: VercelRequest, name: string): string | null {
   const match = cookies.split("; ").find((c) => c.startsWith(`${name}=`));
   return match ? match.split("=")[1] : null;
 }
+
+// Coordenadas fijas donde va la firma dentro del PDF.
+// Ajusta estos valores según el diseño real de tu boleta.
+// En PDF, el origen (0,0) está en la esquina INFERIOR izquierda de la página.
+const SIGNATURE_X = 60;
+const SIGNATURE_Y = 80;
+const SIGNATURE_WIDTH = 180;
+const SIGNATURE_HEIGHT = 70;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -38,12 +50,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { code } = req.query as { code?: string };
-    const { signatureDataUrl: providedSignature, proofImageUrl } = (req.body ?? {}) as {
-      signatureDataUrl?: string;
-      proofImageUrl?: string;
-    };
+    const { signatureDataUrl: providedSignature } = (req.body ?? {}) as { signatureDataUrl?: string };
 
-    // Si no se envió una firma nueva, usa la firma maestra guardada del empleado
+    if (!code) {
+      return res.status(400).json({ error: "Código de boleta requerido" });
+    }
+
+    const checkResult = await db.sql`
+      SELECT id, status, pdf_url FROM payslips 
+      WHERE payslip_code = ${code} AND employee_id = ${session.employee_id}
+    `;
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Boleta no encontrada" });
+    }
+
+    const payslipRow = checkResult.rows[0];
+
+    if (payslipRow.status === "signed") {
+      return res.status(400).json({ error: "Esta boleta ya fue firmada anteriormente" });
+    }
+
+    if (!payslipRow.pdf_url) {
+      return res.status(400).json({ error: "Esta boleta no tiene un PDF asociado" });
+    }
+
+    // Determina qué firma usar: la enviada ahora, o la firma maestra guardada
     let signatureDataUrl = providedSignature;
     if (!signatureDataUrl) {
       const employeeResult = await db.sql`
@@ -56,33 +88,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "No tienes una firma guardada. Crea tu firma primero." });
     }
 
-    // Si se envió una firma nueva (primera vez), la guardamos también como la firma maestra
     if (providedSignature) {
       await db.sql`
         UPDATE employees SET signature_data_url = ${providedSignature} WHERE id = ${session.employee_id}
       `;
     }
 
-    // Verifica que la boleta exista, pertenezca a este empleado, y esté pendiente
-    const checkResult = await db.sql`
-      SELECT id, status FROM payslips 
-      WHERE payslip_code = ${code} AND employee_id = ${session.employee_id}
-    `;
+    // Descarga el PDF original
+    const pdfResponse = await fetch(payslipRow.pdf_url);
+    const pdfBytes = await pdfResponse.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(pdfBytes);
 
-    if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: "Boleta no encontrada" });
-    }
+    // Convierte la firma (base64 PNG) en bytes e incrústala
+    const signatureBase64 = signatureDataUrl.includes(",") ? signatureDataUrl.split(",")[1] : signatureDataUrl;
+    const signatureBytes = Buffer.from(signatureBase64, "base64");
+    const signatureImage = await pdfDoc.embedPng(signatureBytes);
 
-    if (checkResult.rows[0].status === "signed") {
-      return res.status(400).json({ error: "Esta boleta ya fue firmada anteriormente" });
-    }
+    const pages = pdfDoc.getPages();
+    const lastPage = pages[pages.length - 1];
+
+    lastPage.drawImage(signatureImage, {
+      x: SIGNATURE_X,
+      y: SIGNATURE_Y,
+      width: SIGNATURE_WIDTH,
+      height: SIGNATURE_HEIGHT,
+    });
+
+    const signedPdfBytes = await pdfDoc.save();
+
+    const signedBlob = await put(`payslips/${code}-signed.pdf`, Buffer.from(signedPdfBytes), {
+      access: "public",
+      contentType: "application/pdf",
+    });
 
     const signedAt = new Date();
 
     await db.sql`
       UPDATE payslips 
-      SET status = 'signed', signature_data_url = ${signatureDataUrl}, signed_at = ${signedAt.toISOString()}, proof_image_url = ${proofImageUrl || null}
-      WHERE id = ${checkResult.rows[0].id}
+      SET status = 'signed', signature_data_url = ${signatureDataUrl}, signed_at = ${signedAt.toISOString()}, signed_pdf_url = ${signedBlob.url}
+      WHERE id = ${payslipRow.id}
     `;
 
     return res.status(200).json({
@@ -90,6 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       signedAt: signedAt.toLocaleString("es-PE", {
         day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
       }),
+      signedPdfUrl: signedBlob.url,
     });
   } catch (error) {
     console.error("Error al firmar boleta:", error);
