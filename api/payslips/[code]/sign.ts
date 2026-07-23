@@ -1,7 +1,7 @@
 // api/payslips/[code]/sign.ts
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { put } from "@vercel/blob";
 import { db } from "../../lib/db.js";
 
@@ -15,10 +15,15 @@ function getCookie(req: VercelRequest, name: string): string | null {
 // Coordenadas fijas donde va la firma dentro del PDF.
 // Ajusta estos valores según el diseño real de tu boleta.
 // En PDF, el origen (0,0) está en la esquina INFERIOR izquierda de la página.
-const SIGNATURE_X = 60;
-const SIGNATURE_Y = 80;
+const SIGNATURE_X = 360;
+const SIGNATURE_Y = 100;
 const SIGNATURE_WIDTH = 180;
 const SIGNATURE_HEIGHT = 70;
+
+// Texto debajo de la firma: nombre del empleado + fecha y hora de firma.
+const SIGNATURE_TEXT_SIZE = 8;
+const SIGNATURE_TEXT_GAP = 12; // separación entre el borde inferior de la firma y la primera línea de texto
+const SIGNATURE_TEXT_LINE_HEIGHT = 10;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -75,12 +80,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Esta boleta no tiene un PDF asociado" });
     }
 
-    // Determina qué firma usar: la enviada ahora, o la firma maestra guardada
+    // Determina qué firma usar: la enviada ahora, o la firma maestra guardada.
+    // De paso traemos el nombre del empleado, para escribirlo debajo de la firma.
     let signatureDataUrl = providedSignature;
+    const employeeResult = await db.sql`
+      SELECT full_name, signature_data_url FROM employees WHERE id = ${session.employee_id}
+    `;
+    const employeeFullName: string = employeeResult.rows[0]?.full_name || "";
     if (!signatureDataUrl) {
-      const employeeResult = await db.sql`
-        SELECT signature_data_url FROM employees WHERE id = ${session.employee_id}
-      `;
       signatureDataUrl = employeeResult.rows[0]?.signature_data_url;
     }
 
@@ -114,6 +121,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       height: SIGNATURE_HEIGHT,
     });
 
+    // Nombre del empleado + fecha y hora de firma (hora Perú), debajo de la firma.
+    const signedAtForPdf = new Date();
+    const signedDateTimeLabel = new Intl.DateTimeFormat("es-PE", {
+      timeZone: "America/Lima",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(signedAtForPdf);
+
+    const textFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const textColor = rgb(0.2, 0.2, 0.2);
+    let textY = SIGNATURE_Y - SIGNATURE_TEXT_GAP;
+
+    if (employeeFullName) {
+      lastPage.drawText(employeeFullName, {
+        x: SIGNATURE_X,
+        y: textY,
+        size: SIGNATURE_TEXT_SIZE,
+        font: textFont,
+        color: textColor,
+      });
+      textY -= SIGNATURE_TEXT_LINE_HEIGHT;
+    }
+
+    lastPage.drawText(`Firmado el ${signedDateTimeLabel}`, {
+      x: SIGNATURE_X,
+      y: textY,
+      size: SIGNATURE_TEXT_SIZE,
+      font: textFont,
+      color: textColor,
+    });
+
     const signedPdfBytes = await pdfDoc.save();
 
     // En producción/preview, Vercel inyecta BLOB_READ_WRITE_TOKEN automáticamente al conectar el store.
@@ -132,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       token: blobToken,
     });
 
-    const signedAt = new Date();
+    const signedAt = signedAtForPdf;
 
     await db.sql`
       UPDATE payslips 

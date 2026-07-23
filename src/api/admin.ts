@@ -30,7 +30,6 @@ export async function fetchAdminEmployees(): Promise<AdminEmployee[]> {
 }
 
 export async function createAdminEmployee(payload: {
-  employeeCode: string;
   fullName: string;
   email: string;
   position?: string;
@@ -44,6 +43,15 @@ export async function createAdminEmployee(payload: {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "No se pudo crear el empleado");
   return data;
+}
+
+export async function deleteAdminEmployee(employeeCode: string): Promise<void> {
+  const res = await fetch(`/api/admin/employees?employeeCode=${encodeURIComponent(employeeCode)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "No se pudo eliminar el empleado");
 }
 
 export async function createAdminPayslip(payload: {

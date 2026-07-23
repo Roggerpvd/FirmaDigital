@@ -5,6 +5,7 @@ import {
   fetchAdminDocuments,
   fetchAdminEmployees,
   createAdminEmployee,
+  deleteAdminEmployee,
   uploadAdminPayslip,
   downloadAdminPayslip,
   type AdminDocument,
@@ -34,12 +35,14 @@ function AdminDashboard() {
 
   // Modal: Agregar Empleado
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
-  const [newEmployeeCode, setNewEmployeeCode] = useState("");
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
   const [newEmployeePosition, setNewEmployeePosition] = useState("");
   const [creatingEmployee, setCreatingEmployee] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<{ email: string; password: string } | null>(null);
+
+  // Eliminar empleado
+  const [deletingEmployeeCode, setDeletingEmployeeCode] = useState<string | null>(null);
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
@@ -130,7 +133,7 @@ function AdminDashboard() {
 
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmployeeCode || !newEmployeeName || !newEmployeeEmail) {
+    if (!newEmployeeName || !newEmployeeEmail) {
       setToast({ message: "Completa los campos obligatorios.", type: "info" });
       return;
     }
@@ -138,7 +141,6 @@ function AdminDashboard() {
     setCreatingEmployee(true);
     try {
       const result = await createAdminEmployee({
-        employeeCode: newEmployeeCode,
         fullName: newEmployeeName,
         email: newEmployeeEmail,
         position: newEmployeePosition || undefined,
@@ -146,7 +148,6 @@ function AdminDashboard() {
 
       setGeneratedPassword({ email: result.employee.email, password: result.temporaryPassword });
       setShowEmployeeModal(false);
-      setNewEmployeeCode("");
       setNewEmployeeName("");
       setNewEmployeeEmail("");
       setNewEmployeePosition("");
@@ -155,6 +156,24 @@ function AdminDashboard() {
       setToast({ message: err.message || "No se pudo crear el empleado.", type: "error" });
     } finally {
       setCreatingEmployee(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeCode: string, fullName: string) => {
+    const confirmed = window.confirm(
+      `¿Eliminar a ${fullName} (${employeeCode})? Se eliminará también su acceso al sistema. Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    setDeletingEmployeeCode(employeeCode);
+    try {
+      await deleteAdminEmployee(employeeCode);
+      setToast({ message: `Empleado ${employeeCode} eliminado.`, type: "success" });
+      loadData();
+    } catch (err: any) {
+      setToast({ message: err.message || "No se pudo eliminar el empleado.", type: "error" });
+    } finally {
+      setDeletingEmployeeCode(null);
     }
   };
 
@@ -231,6 +250,17 @@ function AdminDashboard() {
     document.body.removeChild(element);
     setToast({ message: "Reporte CSV descargado.", type: "success" });
   };
+
+  // Próximo código de empleado, solo para mostrarlo en el modal.
+  // El código real se genera y se asigna en el servidor al guardar.
+  const nextEmployeeCode = (() => {
+    const maxNumber = employees.reduce((max, emp) => {
+      const match = /(\d+)\s*$/.exec(emp.employee_code || "");
+      const num = match ? parseInt(match[1], 10) : 0;
+      return Math.max(max, num);
+    }, 0);
+    return `EMP-${String(maxNumber + 1).padStart(4, "0")}`;
+  })();
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -653,6 +683,16 @@ function AdminDashboard() {
                             Ver portal
                             <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                           </Link>
+                          <div className="mt-md pt-md border-t border-outline-variant dark:border-slate-800 flex justify-end">
+                          <button
+                            onClick={() => handleDeleteEmployee(emp.employee_code, emp.full_name)}
+                            disabled={deletingEmployeeCode === emp.employee_code}
+                            className="text-[11px] font-semibold text-error dark:text-red-400 hover:underline flex items-center gap-xs disabled:opacity-50"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">person_remove</span>
+                            {deletingEmployeeCode === emp.employee_code ? "Eliminando..." : "Eliminar empleado"}
+                          </button>
+                        </div>
                         </div>
                       </div>
                     );
@@ -790,8 +830,13 @@ function AdminDashboard() {
 
             <form onSubmit={handleCreateEmployee} className="space-y-md">
               <div>
-                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Código de Empleado *</label>
-                <input type="text" required value={newEmployeeCode} onChange={(e) => setNewEmployeeCode(e.target.value)} placeholder="ej. EMP-0150" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Código de Empleado</label>
+                <div className="w-full bg-surface-container-low dark:bg-slate-800/50 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
+                  {nextEmployeeCode}
+                </div>
+                <p className="text-[11px] text-on-surface-variant dark:text-slate-500 mt-xs">
+                  Se asigna solo, en orden, al guardar.
+                </p>
               </div>
 
               <div>
