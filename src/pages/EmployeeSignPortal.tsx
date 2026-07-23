@@ -9,6 +9,8 @@ interface PayslipData {
   period: string;
   netAmount: string;
   issueDate: string;
+  pdfUrl?: string;
+  signedPdfUrl?: string;
 }
 
 const MOCK_PAYSLIP: PayslipData = {
@@ -35,6 +37,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
   const [canvasIsEmpty, setCanvasIsEmpty] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [signedAt, setSignedAt] = useState<string>("");
+  const [signedPdfUrl, setSignedPdfUrl] = useState<string | undefined>(payslip.signedPdfUrl);
   const [checkingSavedSignature, setCheckingSavedSignature] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -151,25 +154,11 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       const canvas = canvasRef.current;
       const finalSignature = signMode === "draw" && canvas && !canvasIsEmpty ? canvas.toDataURL("image/png") : signatureDataUrl;
 
-      // Genera el comprobante usando la firma que se va a enviar, no la del estado (puede no haberse actualizado aún)
-      const tempSignatureForProof = finalSignature;
-      let proofImageUrl: string | undefined;
-      if (tempSignatureForProof) {
-        const previousSignature = signatureDataUrl;
-        setSignatureDataUrl(tempSignatureForProof);
-        try {
-          proofImageUrl = await generateProofImage();
-        } catch {
-          proofImageUrl = undefined;
-        }
-        if (!previousSignature) setSignatureDataUrl(tempSignatureForProof);
-      }
-
       const res = await fetch(`/api/payslips/${payslip.id}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ signatureDataUrl: finalSignature, proofImageUrl }),
+        body: JSON.stringify({ signatureDataUrl: finalSignature }),
       });
 
       const data = await res.json();
@@ -181,6 +170,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       }
 
       setSignedAt(data.signedAt);
+      setSignedPdfUrl(data.signedPdfUrl);
       setStep("success");
     } catch {
       alert("No se pudo conectar con el servidor");
@@ -188,71 +178,31 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
     }
   };
 
-  const generateProofImage = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!signatureDataUrl) {
-        reject(new Error("Falta la firma"));
-        return;
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = 700;
-      canvas.height = 500;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("No se pudo crear el comprobante"));
-        return;
-      }
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "#c6c6cd";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
-
-      ctx.fillStyle = "#191c1e";
-      ctx.font = "bold 22px Inter, sans-serif";
-      ctx.fillText("Boleta de Pago — Firmada Digitalmente", 50, 70);
-
-      ctx.font = "14px Inter, sans-serif";
-      ctx.fillStyle = "#45464d";
-      const lines = [
-        `ID de Boleta: ${payslip.id}`,
-        `Empleado: ${payslip.employeeName} (${payslip.employeeCode})`,
-        `Período: ${payslip.period}`,
-        `Neto a pagar: ${payslip.netAmount}`,
-        `Fecha de emisión: ${payslip.issueDate}`,
-        `Firmado el: ${signedAt || new Date().toLocaleString("es-PE")}`,
-      ];
-      lines.forEach((line, i) => ctx.fillText(line, 50, 115 + i * 26));
-
-      ctx.font = "12px Inter, sans-serif";
-      ctx.fillStyle = "#76777d";
-      ctx.fillText("Firma del empleado:", 50, 300);
-      ctx.strokeStyle = "#c6c6cd";
-      ctx.strokeRect(50, 315, 280, 120);
-
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 60, 325, 260, 100);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => reject(new Error("No se pudo cargar la firma"));
-      img.src = signatureDataUrl;
-    });
-  };
-
+  // Descarga el PDF real de la boleta (el firmado por el backend con pdf-lib),
+  // no una imagen genérica generada en el navegador.
   const handleDownloadProof = async () => {
     try {
-      const dataUrl = await generateProofImage();
+      const res = await fetch(`/api/payslips/${payslip.id}/download`, {
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "No se pudo descargar la boleta firmada");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `${payslip.id}_firmada.png`;
+      link.href = url;
+      link.download = `${payslip.id}-firmada.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch {
-      alert("No se pudo generar el comprobante");
+      alert("No se pudo conectar con el servidor para descargar la boleta");
     }
   };
 
@@ -263,8 +213,8 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface flex items-center justify-center p-md">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-transparent text-on-surface p-md py-xl">
+      <div className="w-full max-w-5xl mx-auto">
 
         {/* Encabezado del empleado */}
         <div className="flex items-center gap-md mb-lg">
@@ -284,216 +234,253 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
           </div>
         )}
 
-        {/* Paso: revisión de la boleta */}
-        {!checkingSavedSignature && step === "review" && (
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
-            <div className="flex items-center justify-between mb-lg">
-              <h2 className="font-headline-md text-headline-md text-primary">Tu Boleta de Pago</h2>
-              <div className="inline-flex items-center gap-sm px-md py-xs rounded-full bg-amber-50 text-amber-700 text-label-md font-semibold border border-amber-100">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                Pendiente
-              </div>
-            </div>
+        {!checkingSavedSignature && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-lg items-start">
 
-            <div className="space-y-sm bg-surface-container-low rounded-lg p-lg mb-lg">
-              <div className="flex justify-between text-[13px]">
-                <span className="text-on-surface-variant">ID de Boleta</span>
-                <span className="font-data-mono text-data-mono text-primary">{payslip.id}</span>
-              </div>
-              <div className="flex justify-between text-[13px]">
-                <span className="text-on-surface-variant">Período</span>
-                <span className="text-primary font-medium">{payslip.period}</span>
-              </div>
-              <div className="flex justify-between text-[13px]">
-                <span className="text-on-surface-variant">Fecha de emisión</span>
-                <span className="text-primary font-medium">{payslip.issueDate}</span>
-              </div>
-              <div className="flex justify-between text-[13px] pt-sm border-t border-outline-variant">
-                <span className="text-on-surface-variant font-semibold">Neto a pagar</span>
-                <span className="text-primary font-bold text-[16px]">{payslip.netAmount}</span>
-              </div>
-            </div>
+            {/* Columna: paso actual del flujo (cambia según el paso) */}
+            <div className="order-2 lg:order-1">
 
-            <p className="text-[12px] text-on-surface-variant mb-lg leading-relaxed">
-              Al firmar digitalmente, confirmas que has revisado el contenido de esta boleta de pago y aceptas su validez legal como comprobante firmado.
-            </p>
+              {/* Paso: revisión de la boleta */}
+              {step === "review" && (
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+                  <div className="flex items-center justify-between mb-lg">
+                    <h2 className="font-headline-md text-headline-md text-primary">Tu Boleta de Pago</h2>
+                    <div className="inline-flex items-center gap-sm px-md py-xs rounded-full bg-amber-50 text-amber-700 text-label-md font-semibold border border-amber-100">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      Pendiente
+                    </div>
+                  </div>
 
-            <button
-              onClick={() => setStep("signing")}
-              className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm shadow-sm"
-            >
-              <span className="material-symbols-outlined text-[20px]">draw</span>
-              Firmar de Manera Digital
-            </button>
-          </div>
-        )}
+                  <div className="space-y-sm bg-surface-container-low rounded-lg p-lg mb-lg">
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-on-surface-variant">ID de Boleta</span>
+                      <span className="font-data-mono text-data-mono text-primary">{payslip.id}</span>
+                    </div>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-on-surface-variant">Período</span>
+                      <span className="text-primary font-medium">{payslip.period}</span>
+                    </div>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-on-surface-variant">Fecha de emisión</span>
+                      <span className="text-primary font-medium">{payslip.issueDate}</span>
+                    </div>
+                  </div>
 
-        {/* Paso: captura de firma */}
-        {step === "signing" && (
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
-            <div className="flex items-center justify-between mb-lg">
-              <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Firma tu Boleta</h2>
-              <button onClick={() => setStep("review")} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
-            </div>
+                  <p className="text-[12px] text-on-surface-variant mb-lg leading-relaxed">
+                    Al firmar digitalmente, confirmas que has revisado el contenido de esta boleta de pago (incluyendo el monto detallado en el PDF) y aceptas su validez legal como comprobante firmado.
+                  </p>
 
-            {/* Tabs de método de firma */}
-            <div className="flex gap-sm mb-lg bg-surface-container-low rounded-lg p-xs">
-              <button
-                onClick={() => { setSignMode("draw"); setUploadError(null); }}
-                className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "draw" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"}`}
-              >
-                <span className="material-symbols-outlined text-[18px]">draw</span>
-                Dibujar firma
-              </button>
-              <button
-                onClick={() => { setSignMode("upload"); }}
-                className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "upload" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"}`}
-              >
-                <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                Subir imagen PNG
-              </button>
-            </div>
-
-            {signMode === "draw" ? (
-              <div>
-                <p className="text-[12px] text-on-surface-variant mb-sm">Usa el mouse o tu dedo para firmar dentro del recuadro.</p>
-                <div className="relative">
-                  <canvas
-                    ref={canvasRef}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerLeave={handlePointerUp}
-                    className="w-full h-56 bg-surface-container-low border-2 border-dashed border-outline-variant rounded-lg touch-none cursor-crosshair"
-                  />
-                  {canvasIsEmpty && (
-                    <p className="absolute inset-0 flex items-center justify-center text-on-surface-variant text-[13px] pointer-events-none opacity-50">
-                      Firma aquí
-                    </p>
-                  )}
+                  <button
+                    onClick={() => setStep("signing")}
+                    className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">draw</span>
+                    Firmar de Manera Digital
+                  </button>
                 </div>
-                <button
-                  onClick={clearCanvas}
-                  className="mt-sm text-[12px] font-semibold text-primary hover:underline flex items-center gap-xs"
-                >
-                  <span className="material-symbols-outlined text-[16px]">refresh</span>
-                  Limpiar firma
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p className="text-[12px] text-on-surface-variant mb-sm">Sube una imagen PNG de tu firma (fondo transparente recomendado, máx. 2MB).</p>
-                {!signatureDataUrl ? (
-                  <label className="custom-dashed h-56 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low transition-colors relative">
-                    <input type="file" accept="image/png" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    <span className="material-symbols-outlined text-[40px] text-outline opacity-40">image</span>
-                    <p className="text-[13px] text-on-surface-variant">Haz clic para seleccionar tu firma (.png)</p>
-                  </label>
-                ) : (
-                  <div className="h-56 bg-surface-container-low border border-outline-variant rounded-lg flex items-center justify-center relative p-md">
-                    <img src={signatureDataUrl} alt="Firma cargada" className="max-h-full max-w-full object-contain" />
+              )}
+
+              {/* Paso: captura de firma */}
+              {step === "signing" && (
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+                  <div className="flex items-center justify-between mb-lg">
+                    <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Firma tu Boleta</h2>
+                    <button onClick={() => setStep("review")} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
+                  </div>
+
+                  {/* Tabs de método de firma */}
+                  <div className="flex gap-sm mb-lg bg-surface-container-low rounded-lg p-xs">
                     <button
-                      onClick={() => setSignatureDataUrl(null)}
-                      className="absolute top-sm right-sm material-symbols-outlined text-[18px] text-outline hover:text-error bg-surface-container-lowest rounded-full p-xs"
+                      onClick={() => { setSignMode("draw"); setUploadError(null); }}
+                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "draw" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"}`}
                     >
-                      close
+                      <span className="material-symbols-outlined text-[18px]">draw</span>
+                      Dibujar firma
+                    </button>
+                    <button
+                      onClick={() => { setSignMode("upload"); }}
+                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "upload" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                      Subir imagen PNG
                     </button>
                   </div>
+
+                  {signMode === "draw" ? (
+                    <div>
+                      <p className="text-[12px] text-on-surface-variant mb-sm">Usa el mouse o tu dedo para firmar dentro del recuadro.</p>
+                      <div className="relative">
+                        <canvas
+                          ref={canvasRef}
+                          onPointerDown={handlePointerDown}
+                          onPointerMove={handlePointerMove}
+                          onPointerUp={handlePointerUp}
+                          onPointerLeave={handlePointerUp}
+                          className="w-full h-56 bg-surface-container-low border-2 border-dashed border-outline-variant rounded-lg touch-none cursor-crosshair"
+                        />
+                        {canvasIsEmpty && (
+                          <p className="absolute inset-0 flex items-center justify-center text-on-surface-variant text-[13px] pointer-events-none opacity-50">
+                            Firma aquí
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={clearCanvas}
+                        className="mt-sm text-[12px] font-semibold text-primary hover:underline flex items-center gap-xs"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">refresh</span>
+                        Limpiar firma
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-[12px] text-on-surface-variant mb-sm">Sube una imagen PNG de tu firma (fondo transparente recomendado, máx. 2MB).</p>
+                      {!signatureDataUrl ? (
+                        <label className="custom-dashed h-56 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low transition-colors relative">
+                          <input type="file" accept="image/png" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                          <span className="material-symbols-outlined text-[40px] text-outline opacity-40">image</span>
+                          <p className="text-[13px] text-on-surface-variant">Haz clic para seleccionar tu firma (.png)</p>
+                        </label>
+                      ) : (
+                        <div className="h-56 bg-surface-container-low border border-outline-variant rounded-lg flex items-center justify-center relative p-md">
+                          <img src={signatureDataUrl} alt="Firma cargada" className="max-h-full max-w-full object-contain" />
+                          <button
+                            onClick={() => setSignatureDataUrl(null)}
+                            className="absolute top-sm right-sm material-symbols-outlined text-[18px] text-outline hover:text-error bg-surface-container-lowest rounded-full p-xs"
+                          >
+                            close
+                          </button>
+                        </div>
+                      )}
+                      {uploadError && <p className="text-[12px] text-error mt-sm">{uploadError}</p>}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleContinueToConfirm}
+                    disabled={!canContinue}
+                    className="w-full mt-lg bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              )}
+
+              {/* Paso: confirmación final */}
+              {step === "confirm" && signatureDataUrl && (
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+                  <div className="flex items-center justify-between mb-lg">
+                    <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Confirma tu Firma</h2>
+                  </div>
+
+                  <div className="bg-surface-container-low border border-outline-variant rounded-lg p-lg mb-lg flex items-center justify-center h-40">
+                    <img src={signatureDataUrl} alt="Vista previa de firma" className="max-h-full max-w-full object-contain" />
+                  </div>
+
+                  <div className="bg-surface-container-low rounded-lg p-md mb-lg text-[12px] text-on-surface-variant space-y-xs">
+                    <p><span className="font-semibold text-primary">Boleta:</span> {payslip.id} — {payslip.period}</p>
+                    <p><span className="font-semibold text-primary">Empleado:</span> {payslip.employeeName}</p>
+                  </div>
+
+                  <label className="flex items-start gap-sm mb-lg cursor-pointer">
+                    <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" />
+                    <span className="text-[12px] text-on-surface-variant leading-relaxed">
+                      Confirmo que esta es mi firma y autorizo firmar digitalmente esta boleta de pago, aceptando su validez legal como comprobante.
+                    </span>
+                  </label>
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!agreed}
+                    className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-sm"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">send</span>
+                    Enviar Boleta Firmada
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignatureDataUrl(null);
+                      setAgreed(false);
+                      setStep("signing");
+                    }}
+                    className="w-full mt-sm text-[12px] text-on-surface-variant hover:text-primary transition-colors"
+                  >
+                    Usar una firma diferente
+                  </button>
+                </div>
+              )}
+
+              {/* Paso: enviando */}
+              {step === "submitting" && (
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm flex flex-col items-center justify-center py-16">
+                  <div className="w-10 h-10 border-4 border-outline-variant border-t-primary rounded-full animate-spin mb-lg"></div>
+                  <p className="text-body-md font-body-md text-on-surface-variant">Enviando tu boleta firmada...</p>
+                </div>
+              )}
+
+              {/* Paso: éxito */}
+              {step === "success" && (
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm text-center">
+                  <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-lg">
+                    <span className="material-symbols-outlined text-[32px]">check_circle</span>
+                  </div>
+                  <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-xs">¡Boleta Firmada!</h2>
+                  <p className="text-[13px] text-on-surface-variant mb-lg">
+                    Tu boleta {payslip.id} fue firmada y enviada correctamente el {signedAt}.
+                  </p>
+                  <div className="flex flex-col gap-sm">
+                    {signedPdfUrl && (
+                      <a
+                        href={signedPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-center bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        Ver PDF firmado
+                      </a>
+                    )}
+                    <button
+                      onClick={handleDownloadProof}
+                      className="w-full bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">download</span>
+                      Descargar comprobante
+                    </button>
+                    <Link
+                      to="/"
+                      className="w-full text-center bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                      Volver a Mis Boletas
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Columna: PDF, fijo y visible en todos los pasos (antes y después de firmar) */}
+            <div className="order-1 lg:order-2 lg:sticky lg:top-xl">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+                <p className="text-[12px] text-on-surface-variant mb-sm font-semibold">
+                  {signedPdfUrl ? "Boleta firmada" : "Vista previa de la boleta"}
+                </p>
+                {(signedPdfUrl || payslip.pdfUrl) ? (
+                  <iframe
+                    src={signedPdfUrl || payslip.pdfUrl}
+                    title={`Boleta ${payslip.id}`}
+                    className="w-full h-[75vh] lg:h-[calc(100vh-220px)] rounded-lg border border-outline-variant bg-surface-container-low"
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center bg-amber-50 border border-amber-100 rounded-lg text-[12px] text-amber-700 p-md text-center">
+                    Esta boleta no tiene un PDF cargado todavía, así que no se puede mostrar la vista previa.
+                  </div>
                 )}
-                {uploadError && <p className="text-[12px] text-error mt-sm">{uploadError}</p>}
               </div>
-            )}
-
-            <button
-              onClick={handleContinueToConfirm}
-              disabled={!canContinue}
-              className="w-full mt-lg bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              Continuar
-            </button>
-          </div>
-        )}
-
-        {/* Paso: confirmación final */}
-        {step === "confirm" && signatureDataUrl && (
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
-            <div className="flex items-center justify-between mb-lg">
-              <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Confirma tu Firma</h2>
             </div>
 
-            <div className="bg-surface-container-low border border-outline-variant rounded-lg p-lg mb-lg flex items-center justify-center h-40">
-              <img src={signatureDataUrl} alt="Vista previa de firma" className="max-h-full max-w-full object-contain" />
-            </div>
-
-            <div className="bg-surface-container-low rounded-lg p-md mb-lg text-[12px] text-on-surface-variant space-y-xs">
-              <p><span className="font-semibold text-primary">Boleta:</span> {payslip.id} — {payslip.period}</p>
-              <p><span className="font-semibold text-primary">Empleado:</span> {payslip.employeeName}</p>
-            </div>
-
-            <label className="flex items-start gap-sm mb-lg cursor-pointer">
-              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" />
-              <span className="text-[12px] text-on-surface-variant leading-relaxed">
-                Confirmo que esta es mi firma y autorizo firmar digitalmente esta boleta de pago, aceptando su validez legal como comprobante.
-              </span>
-            </label>
-
-            <button
-              onClick={handleSubmit}
-              disabled={!agreed}
-              className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-sm"
-            >
-              <span className="material-symbols-outlined text-[20px]">send</span>
-              Enviar Boleta Firmada
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSignatureDataUrl(null);
-                setAgreed(false);
-                setStep("signing");
-              }}
-              className="w-full mt-sm text-[12px] text-on-surface-variant hover:text-primary transition-colors"
-            >
-              Usar una firma diferente
-            </button>
-          </div>
-        )}
-
-        {/* Paso: enviando */}
-        {step === "submitting" && (
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm flex flex-col items-center justify-center py-16">
-            <div className="w-10 h-10 border-4 border-outline-variant border-t-primary rounded-full animate-spin mb-lg"></div>
-            <p className="text-body-md font-body-md text-on-surface-variant">Enviando tu boleta firmada...</p>
-          </div>
-        )}
-
-        {/* Paso: éxito */}
-        {step === "success" && (
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm text-center">
-            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-lg">
-              <span className="material-symbols-outlined text-[32px]">check_circle</span>
-            </div>
-            <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-xs">¡Boleta Firmada!</h2>
-            <p className="text-[13px] text-on-surface-variant mb-lg">
-              Tu boleta {payslip.id} fue firmada y enviada correctamente el {signedAt}.
-            </p>
-            <div className="flex flex-col gap-sm">
-              <button
-                onClick={handleDownloadProof}
-                className="w-full bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
-              >
-                <span className="material-symbols-outlined text-[20px]">download</span>
-                Descargar comprobante
-              </button>
-              <Link
-                to="/"
-                className="w-full text-center bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm"
-              >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                Volver a Mis Boletas
-              </Link>
-            </div>
           </div>
         )}
       </div>

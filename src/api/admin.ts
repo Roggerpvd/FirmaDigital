@@ -73,11 +73,8 @@ export async function fetchPayslipProof(payslipCode: string): Promise<string> {
 
 export async function uploadAdminPayslip(payload: {
   employeeEmail: string;
-  payslipCode: string;
-  period: string;
-  issueDate: string;
   pdfBase64: string;
-}): Promise<void> {
+}): Promise<{ payslipCode: string; period: string; issueDate: string }> {
   const res = await fetch("/api/admin/payslips-action", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -86,11 +83,12 @@ export async function uploadAdminPayslip(payload: {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "No se pudo subir la boleta");
+  return { payslipCode: data.payslipCode, period: data.period, issueDate: data.issueDate };
 }
 
-export const downloadAdminPayslip = async (payslipCode: string) => {
+export const downloadAdminPayslip = async (payslipCode: string, signed = false) => {
   const response = await fetch(
-    `/api/admin/payslips-action?payslipCode=${encodeURIComponent(payslipCode)}`,
+    `/api/admin/payslips-action?payslipCode=${encodeURIComponent(payslipCode)}${signed ? "&signed=true" : ""}`,
     { credentials: "include" }
   );
 
@@ -103,7 +101,7 @@ export const downloadAdminPayslip = async (payslipCode: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${payslipCode}.pdf`;
+  link.download = `${payslipCode}${signed ? "-firmada" : ""}.pdf`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

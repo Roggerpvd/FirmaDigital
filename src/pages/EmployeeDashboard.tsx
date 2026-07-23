@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { EmployeePayslip, EmployeeProfile } from "../types/payslip";
 import { isPayslipSigned } from "../store/payslipStore";
 import PayslipCard from "../components/PayslipCard";
-import { downloadPayslipProof } from "../utils/downloadPayslipProof";
 
 
 function getInitials(name: string) {
@@ -38,12 +37,34 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
   });
   
 
-  const handleDownload = (payslip: EmployeePayslip) => {
-    downloadPayslipProof(employee, payslip);
+  const handleDownload = async (payslip: EmployeePayslip) => {
+    try {
+      const res = await fetch(`/api/payslips/${payslip.id}/download`, {
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "No se pudo descargar la boleta");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${payslip.id}${payslip.status === "Signed" ? "-firmada" : ""}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("No se pudo conectar con el servidor para descargar la boleta");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface">
+    <div className="min-h-screen bg-transparent text-on-surface">
       <div className="max-w-2xl mx-auto p-md sm:p-xl">
 
         {/* Encabezado del empleado */}

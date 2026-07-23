@@ -51,7 +51,7 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
   const base64Data = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
   const pdfBuffer = Buffer.from(base64Data, "base64");
 
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
   const blobStoreId = process.env.BLOB_STORE_ID;
   const oidcToken = process.env.VERCEL_OIDC_TOKEN;
 
@@ -83,34 +83,41 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handleDownload(req: VercelRequest, res: VercelResponse) {
-  const { payslipCode } = req.query;
+  const { payslipCode, signed } = req.query;
   if (!payslipCode || typeof payslipCode !== "string") {
     return res.status(400).json({ error: "Falta el código de boleta" });
   }
 
+  const wantsSigned = signed === "true" || signed === "1";
+
   const result = await db.sql`
-    SELECT pdf_url FROM payslips WHERE payslip_code = ${payslipCode}
+    SELECT pdf_url, signed_pdf_url FROM payslips WHERE payslip_code = ${payslipCode}
   `;
 
   if (result.rows.length === 0) {
     return res.status(404).json({ error: "Boleta no encontrada" });
   }
 
-  const { pdf_url } = result.rows[0];
-  if (!pdf_url) {
-    return res.status(404).json({ error: "Esta boleta no tiene PDF asociado" });
+  const { pdf_url, signed_pdf_url } = result.rows[0];
+  const fileUrl = wantsSigned ? signed_pdf_url : pdf_url;
+
+  if (!fileUrl) {
+    return res.status(404).json({
+      error: wantsSigned ? "Esta boleta todavía no ha sido firmada" : "Esta boleta no tiene PDF asociado",
+    });
   }
 
-  const fileResponse = await fetch(pdf_url);
+  const fileResponse = await fetch(fileUrl);
   if (!fileResponse.ok) {
     return res.status(502).json({ error: "No se pudo obtener el PDF del storage" });
   }
 
   const arrayBuffer = await fileResponse.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+  const suffix = wantsSigned ? "-firmada" : "";
 
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${payslipCode}.pdf"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${payslipCode}${suffix}.pdf"`);
   res.setHeader("Content-Length", buffer.length.toString());
   res.setHeader("Cache-Control", "private, max-age=0, no-cache");
 

@@ -27,6 +27,8 @@ CREATE TABLE payslips (
   issue_date DATE NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'signed')),
   signature_data_url TEXT,                 -- la firma dibujada/subida, en base64
+  pdf_url TEXT,                            -- PDF original subido por el admin (Vercel Blob)
+  signed_pdf_url TEXT,                     -- PDF ya firmado, con la firma incrustada (Vercel Blob)
   signed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -50,6 +52,15 @@ CREATE TABLE sessions (
   admin_id INTEGER REFERENCES admins(id),
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Control de intentos de login fallidos, para bloquear ataques de fuerza bruta.
+-- Se lleva por correo normalizado; se resetea cuando el login es exitoso.
+CREATE TABLE login_attempts (
+  identifier TEXT PRIMARY KEY,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  first_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  locked_until TIMESTAMPTZ
 );
 
 -- Índices útiles para las búsquedas más comunes

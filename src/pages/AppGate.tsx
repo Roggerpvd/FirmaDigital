@@ -29,7 +29,7 @@ function AppGate() {
 
   if (session === "loading") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
       </div>
     );
@@ -45,7 +45,7 @@ function AppGate() {
 
   if (payslipsLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
       </div>
     );

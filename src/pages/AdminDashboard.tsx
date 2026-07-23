@@ -7,10 +7,10 @@ import {
   createAdminEmployee,
   uploadAdminPayslip,
   downloadAdminPayslip,
-  fetchPayslipProof,
   type AdminDocument,
   type AdminEmployee,
 } from "../api/admin";
+import { todayInPeru, currentPeriodInPeru } from "../utils/peruDate";
 
 const statusLabel = (status: "Signed" | "Pending") => (status === "Signed" ? "Firmado" : "Pendiente");
 
@@ -29,9 +29,6 @@ function AdminDashboard() {
   // Modal: Subir Boleta (PDF)
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [newPayslipEmail, setNewPayslipEmail] = useState("");
-  const [newPayslipCode, setNewPayslipCode] = useState("");
-  const [newPayslipPeriod, setNewPayslipPeriod] = useState("");
-  const [newPayslipIssueDate, setNewPayslipIssueDate] = useState("");
   const [newPayslipFile, setNewPayslipFile] = useState<File | null>(null);
   const [creatingBatch, setCreatingBatch] = useState(false);
 
@@ -100,8 +97,8 @@ function AdminDashboard() {
 
   const handleCreatePayslip = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPayslipEmail || !newPayslipCode || !newPayslipPeriod || !newPayslipIssueDate || !newPayslipFile) {
-      setToast({ message: "Completa todos los campos y adjunta el PDF.", type: "info" });
+    if (!newPayslipEmail || !newPayslipFile) {
+      setToast({ message: "Selecciona un empleado y adjunta el PDF.", type: "info" });
       return;
     }
 
@@ -114,20 +111,14 @@ function AdminDashboard() {
         reader.readAsDataURL(newPayslipFile);
       });
 
-      await uploadAdminPayslip({
+      const { payslipCode } = await uploadAdminPayslip({
         employeeEmail: newPayslipEmail,
-        payslipCode: newPayslipCode,
-        period: newPayslipPeriod,
-        issueDate: newPayslipIssueDate,
         pdfBase64,
       });
 
-      setToast({ message: `Boleta ${newPayslipCode} subida correctamente.`, type: "success" });
+      setToast({ message: `Boleta ${payslipCode} subida correctamente.`, type: "success" });
       setShowBatchModal(false);
       setNewPayslipEmail("");
-      setNewPayslipCode("");
-      setNewPayslipPeriod("");
-      setNewPayslipIssueDate("");
       setNewPayslipFile(null);
       loadData();
     } catch (err: any) {
@@ -175,15 +166,9 @@ function AdminDashboard() {
     }
   };
 
-  const handleDownloadProof = async (payslipId: string) => {
+  const handleDownloadProof = async (payslipCode: string) => {
     try {
-      const dataUrl = await fetchPayslipProof(payslipId);
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `${payslipId}_firmada.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      await downloadAdminPayslip(payslipCode, true);
     } catch (err: any) {
       setToast({ message: err.message || "No se pudo descargar el comprobante.", type: "error" });
     }
@@ -255,7 +240,7 @@ function AdminDashboard() {
 
   if (loadingData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
       </div>
     );
@@ -263,7 +248,7 @@ function AdminDashboard() {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-background text-on-surface flex items-center justify-center p-md">
+      <div className="min-h-screen bg-transparent text-on-surface flex items-center justify-center p-md">
         <div className="max-w-sm text-center bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
           <span className="material-symbols-outlined text-[40px] text-error opacity-70 mb-md">error</span>
           <p className="text-[13px] text-on-surface-variant mb-lg">{loadError}</p>
@@ -276,7 +261,7 @@ function AdminDashboard() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${isDarkMode ? "dark bg-slate-950 text-slate-100" : "bg-background text-on-surface"}`}>
+    <div className={`min-h-screen transition-colors duration-200 ${isDarkMode ? "dark bg-slate-950 text-slate-100" : "bg-transparent text-on-surface"}`}>
       {/* Toast */}
       {toast && (
         <div className="fixed top-5 right-5 z-[100] max-w-sm rounded-lg shadow-lg border border-outline-variant p-md flex items-start gap-md bg-surface-container-lowest dark:bg-slate-900">
@@ -744,20 +729,23 @@ function AdminDashboard() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">ID de Boleta *</label>
-                <input type="text" required value={newPayslipCode} onChange={(e) => setNewPayslipCode(e.target.value)} placeholder="ej. BP-2026-020" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
+              <div className="grid grid-cols-2 gap-md">
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Período</label>
+                  <div className="w-full bg-surface-container-low dark:bg-slate-800/50 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
+                    {currentPeriodInPeru()}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Fecha de Emisión</label>
+                  <div className="w-full bg-surface-container-low dark:bg-slate-800/50 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
+                    {todayInPeru()}
+                  </div>
+                </div>
               </div>
-
-              <div>
-                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Período *</label>
-                <input type="text" required value={newPayslipPeriod} onChange={(e) => setNewPayslipPeriod(e.target.value)} placeholder="ej. Diciembre 2026" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Fecha de Emisión *</label>
-                <input type="date" required value={newPayslipIssueDate} onChange={(e) => setNewPayslipIssueDate(e.target.value)} className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
-              </div>
+              <p className="text-[11px] text-on-surface-variant dark:text-slate-500 -mt-sm">
+                El período y la fecha se asignan automáticamente con la fecha de hoy (hora Perú). El ID de la boleta se genera solo, en orden, para el empleado seleccionado.
+              </p>
 
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Archivo PDF de la Boleta *</label>

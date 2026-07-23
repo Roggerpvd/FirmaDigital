@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { put } from "@vercel/blob";
 import { db } from "../lib/db.js";
+import { todayInPeru, currentPeriodInPeru } from "../lib/peruDate.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
@@ -26,20 +27,17 @@ async function requireAdmin(req: VercelRequest): Promise<boolean> {
 }
 
 async function handleUpload(req: VercelRequest, res: VercelResponse) {
-  const { employeeEmail, payslipCode, period, issueDate, pdfBase64 } = (req.body ?? {}) as {
+  const { employeeEmail, pdfBase64 } = (req.body ?? {}) as {
     employeeEmail?: string;
-    payslipCode?: string;
-    period?: string;
-    issueDate?: string;
     pdfBase64?: string;
   };
 
-  if (!employeeEmail || !payslipCode || !period || !issueDate || !pdfBase64) {
-    return res.status(400).json({ error: "Faltan campos obligatorios" });
+  if (!employeeEmail || !pdfBase64) {
+    return res.status(400).json({ error: "Falta el empleado o el archivo PDF" });
   }
 
   const employeeResult = await db.sql`
-    SELECT id FROM employees WHERE email = ${employeeEmail.trim().toLowerCase()}
+    SELECT id, employee_code FROM employees WHERE email = ${employeeEmail.trim().toLowerCase()}
   `;
 
   if (employeeResult.rows.length === 0) {
@@ -47,16 +45,25 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
   }
 
   const employeeId = employeeResult.rows[0].id;
+  const employeeCode = employeeResult.rows[0].employee_code;
+
+  // ID correlativo: cuántas boletas tiene ya este empleado + 1, ej. "EMP-0142-003"
+  const countResult = await db.sql`
+    SELECT COUNT(*)::int AS total FROM payslips WHERE employee_id = ${employeeId}
+  `;
+  const nextSeq = countResult.rows[0].total + 1;
+  const payslipCode = `${employeeCode}-${String(nextSeq).padStart(3, "0")}`;
+
+  const period = currentPeriodInPeru();
+  const issueDate = todayInPeru();
 
   const base64Data = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
   const pdfBuffer = Buffer.from(base64Data, "base64");
 
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-  const blobStoreId = process.env.BLOB_STORE_ID;
-  const oidcToken = process.env.VERCEL_OIDC_TOKEN;
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
 
-  if (!blobToken && !(oidcToken && blobStoreId)) {
-    console.error("Faltan credenciales de Vercel Blob en el servidor");
+  if (!blobToken) {
+    console.error("Falta el BLOB_READ_WRITE_TOKEN en el servidor");
     return res.status(500).json({
       error: "Configuración de storage incompleta. Contacta al administrador.",
     });
@@ -70,7 +77,7 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
       addRandomSuffix: false,
       contentType: "application/pdf",
       allowOverwrite: true,
-      ...(blobToken ? { token: blobToken } : { token: oidcToken!, storeId: blobStoreId! }),
+      token: blobToken, // Pasamos el token explícitamente
     }
   );
 
@@ -79,38 +86,47 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
     VALUES (${payslipCode}, ${employeeId}, ${period}, 0, ${issueDate}, 'pending', ${blob.url})
   `;
 
-  return res.status(201).json({ success: true, pdfUrl: blob.url });
+  return res.status(201).json({ success: true, payslipCode, period, issueDate, pdfUrl: blob.url });
 }
 
 async function handleDownload(req: VercelRequest, res: VercelResponse) {
-  const { payslipCode } = req.query;
+  const { payslipCode, signed } = req.query;
   if (!payslipCode || typeof payslipCode !== "string") {
     return res.status(400).json({ error: "Falta el código de boleta" });
   }
 
+  const wantsSigned = signed === "true" || signed === "1";
+
   const result = await db.sql`
-    SELECT pdf_url FROM payslips WHERE payslip_code = ${payslipCode}
+    SELECT pdf_url, signed_pdf_url FROM payslips WHERE payslip_code = ${payslipCode}
   `;
 
   if (result.rows.length === 0) {
     return res.status(404).json({ error: "Boleta no encontrada" });
   }
 
-  const { pdf_url } = result.rows[0];
-  if (!pdf_url) {
-    return res.status(404).json({ error: "Esta boleta no tiene PDF asociado" });
+  const { pdf_url, signed_pdf_url } = result.rows[0];
+
+  // Si piden explícitamente el firmado, usamos signed_pdf_url; si no, el original.
+  const fileUrl = wantsSigned ? signed_pdf_url : pdf_url;
+
+  if (!fileUrl) {
+    return res.status(404).json({
+      error: wantsSigned ? "Esta boleta todavía no ha sido firmada" : "Esta boleta no tiene PDF asociado",
+    });
   }
 
-  const fileResponse = await fetch(pdf_url);
+  const fileResponse = await fetch(fileUrl);
   if (!fileResponse.ok) {
     return res.status(502).json({ error: "No se pudo obtener el PDF del storage" });
   }
 
   const arrayBuffer = await fileResponse.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+  const suffix = wantsSigned ? "-firmada" : "";
 
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${payslipCode}.pdf"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${payslipCode}${suffix}.pdf"`);
   res.setHeader("Content-Length", buffer.length.toString());
   res.setHeader("Cache-Control", "private, max-age=0, no-cache");
 
@@ -118,8 +134,6 @@ async function handleDownload(req: VercelRequest, res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log(`[payslips-action] ${req.method} ${req.url} | query:`, req.query);
-
   const isAdmin = await requireAdmin(req);
   if (!isAdmin) {
     return res.status(403).json({ error: "Acceso solo para administradores" });

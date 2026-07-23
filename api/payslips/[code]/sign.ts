@@ -116,9 +116,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const signedPdfBytes = await pdfDoc.save();
 
+    // En producción/preview, Vercel inyecta BLOB_READ_WRITE_TOKEN automáticamente al conectar el store.
+    // En desarrollo local (vercel dev) usamos BLOB_READ_WRITE_TOKEN_DEV como respaldo,
+    // porque las variables "Sensitive" no se pueden habilitar para el ambiente Development.
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
+    if (!blobToken) {
+      console.error("Falta BLOB_READ_WRITE_TOKEN en las variables de entorno del servidor");
+      return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
+    }
+
     const signedBlob = await put(`payslips/${code}-signed.pdf`, Buffer.from(signedPdfBytes), {
       access: "public",
       contentType: "application/pdf",
+      allowOverwrite: true,
+      token: blobToken,
     });
 
     const signedAt = new Date();

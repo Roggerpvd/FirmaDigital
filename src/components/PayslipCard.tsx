@@ -26,8 +26,7 @@ function PayslipCard({ payslip, onDownload }: PayslipCardProps) {
         </div>
       </div>
 
-      <div className="flex flex-col items-end gap-sm shrink-0">
-        <span className="font-body-md text-body-md font-bold text-primary">{payslip.netAmount}</span>
+      <div className="flex items-center gap-sm shrink-0">
         {isSigned ? (
           <button
             onClick={() => onDownload(payslip)}

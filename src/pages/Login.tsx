@@ -76,7 +76,7 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface flex items-center justify-center p-md">
+    <div className="min-h-screen bg-transparent text-on-surface flex items-center justify-center p-md">
       <div className="w-full max-w-sm">
         <div className="text-center mb-xl">
           <h1 className="font-headline-md text-headline-md text-primary font-bold">Mister Pan</h1>
