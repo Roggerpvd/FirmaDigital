@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db } from "../lib/db.js";
+import { db } from "../_lib/db.js";
 
 const ADMIN_SESSION_HOURS = 24 * 7;
 const EMPLOYEE_SESSION_HOURS = 24 * 7;

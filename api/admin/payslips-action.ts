@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { put } from "@vercel/blob";
-import { db } from "../lib/db.js";
-import { todayInPeru, currentPeriodInPeru } from "../lib/peruDate.js";
+import { db } from "../_lib/db.js";
+import { todayInPeru, currentPeriodInPeru } from "../_lib/peruDate.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;

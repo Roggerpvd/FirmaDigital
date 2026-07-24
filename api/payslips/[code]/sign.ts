@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { put } from "@vercel/blob";
-import { db } from "../../lib/db.js";
+import { db } from "../../_lib/db.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;

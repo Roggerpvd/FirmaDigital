@@ -1,7 +1,7 @@
 // api/payslips/[code]/download.ts
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "../../lib/db.js";
+import { db } from "../../_lib/db.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
