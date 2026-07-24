@@ -38,8 +38,7 @@ function SplashScreen({ onFinish }: SplashScreenProps) {
         <img
           src="/mister-pan-watermark.png"
           alt="Mister Pan"
-          className="w-40 h-40 object-contain"
-        />
+          className="w-64 h-64 object-contain"        />
         <div className="w-6 h-6 border-2 border-outline-variant border-t-primary rounded-full animate-spin" />
       </div>
       <style>{`
