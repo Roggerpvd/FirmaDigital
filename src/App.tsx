@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppGate from "./pages/AppGate";
 import Login from "./pages/Login";
 import EmployeeSignRoute from "./pages/EmployeeSignRoute";
+import SplashScreen from "./components/SplashScreen";
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   return (
     <>
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       {/* Fondo global fijo: logo como marca de agua sutil detrás de toda la app.
           El wash de color encima de la imagen mantiene el mismo tono de fondo
           del diseño (#f7f9fb) y controla qué tan visible se ve el logo. */}
