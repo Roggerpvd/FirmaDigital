@@ -169,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const signedBlob = await put(`payslips/${code}-signed.pdf`, Buffer.from(signedPdfBytes), {
       access: "public",
       contentType: "application/pdf",
-      allowOverwrite: true,
+      addRandomSuffix: true,
       token: blobToken,
     });
 

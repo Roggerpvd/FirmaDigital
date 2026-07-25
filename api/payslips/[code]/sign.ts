@@ -169,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const signedBlob = await put(`payslips/${code}-signed.pdf`, Buffer.from(signedPdfBytes), {
       access: "public",
       contentType: "application/pdf",
-      allowOverwrite: true,
+      addRandomSuffix: true,
       token: blobToken,
     });
 
@@ -184,6 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       success: true,
       signedAt: signedAt.toLocaleString("es-PE", {
+        timeZone: "America/Lima",
         day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
       }),
       signedPdfUrl: signedBlob.url,

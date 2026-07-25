@@ -74,9 +74,8 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
     pdfBuffer,
     {
       access: "public",
-      addRandomSuffix: false,
+      addRandomSuffix: true,
       contentType: "application/pdf",
-      allowOverwrite: true,
       token: blobToken, // Pasamos el token explícitamente
     }
   );
