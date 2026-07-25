@@ -134,22 +134,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const employeeId = employeeResult.rows[0].id;
 
-      // Elimina primero las credenciales/accesos del empleado: sesiones activas
-      // y magic links (enlaces de acceso de un solo uso).
+      // Elimina, en orden, todo lo asociado al empleado:
+      // 1) sus boletas (payslips), 2) sus credenciales/accesos (sesiones y magic links),
+      // 3) al final, al empleado mismo. Así queda sin acceso y sin registros.
+      await db.sql`DELETE FROM payslips WHERE employee_id = ${employeeId}`;
       await db.sql`DELETE FROM sessions WHERE employee_id = ${employeeId}`;
       await db.sql`DELETE FROM magic_links WHERE employee_id = ${employeeId}`;
 
-      try {
-        await db.sql`DELETE FROM employees WHERE id = ${employeeId}`;
-      } catch (error: any) {
-        // El empleado tiene boletas asociadas (employee_id es NOT NULL en payslips)
-        if (error.code === "23503") {
-          return res.status(409).json({
-            error: "No se puede eliminar: el empleado tiene boletas registradas. Elimina primero sus boletas.",
-          });
-        }
-        throw error;
-      }
+      await db.sql`DELETE FROM employees WHERE id = ${employeeId}`;
 
       return res.status(200).json({ success: true });
     } catch (error) {

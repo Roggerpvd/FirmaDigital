@@ -161,7 +161,7 @@ function AdminDashboard() {
 
   const handleDeleteEmployee = async (employeeCode: string, fullName: string) => {
     const confirmed = window.confirm(
-      `¿Eliminar a ${fullName} (${employeeCode})? Se eliminará también su acceso al sistema. Esta acción no se puede deshacer.`
+      `¿Eliminar a ${fullName} (${employeeCode})? Se eliminará su acceso al sistema y TODAS sus boletas registradas. Esta acción no se puede deshacer.`
     );
     if (!confirmed) return;
 
