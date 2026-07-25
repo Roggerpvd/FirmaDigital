@@ -170,7 +170,10 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       }
 
       setSignedAt(data.signedAt);
-      setSignedPdfUrl(data.signedPdfUrl);
+      // Le agregamos un parámetro con la hora actual a la URL del PDF firmado.
+      // Esto evita que el navegador muestre una versión vieja cacheada del PDF,
+      // ya que la URL del archivo es siempre la misma para una misma boleta.
+      setSignedPdfUrl(data.signedPdfUrl ? `${data.signedPdfUrl}?v=${Date.now()}` : data.signedPdfUrl);
       setStep("success");
     } catch {
       alert("No se pudo conectar con el servidor");
