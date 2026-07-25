@@ -9,6 +9,25 @@ function getCookie(req: VercelRequest, name: string): string | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // DELETE = cerrar sesión (logout). Reutiliza este mismo endpoint en vez de crear
+  // uno nuevo, para no sumar otra función serverless.
+  if (req.method === "DELETE") {
+    try {
+      const sessionToken = getCookie(req, "session_token");
+      if (sessionToken) {
+        await db.sql`DELETE FROM sessions WHERE token = ${sessionToken}`;
+      }
+      res.setHeader(
+        "Set-Cookie",
+        "session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0"
+      );
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    }
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Método no permitido" });
   }

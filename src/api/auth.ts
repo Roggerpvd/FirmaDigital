@@ -12,3 +12,9 @@ export async function fetchCurrentSession(): Promise<Session | null> {
   return res.json();
 }
 
+export async function logout(): Promise<void> {
+  await fetch("/api/auth/me", {
+    method: "DELETE",
+    credentials: "include",
+  });
+}

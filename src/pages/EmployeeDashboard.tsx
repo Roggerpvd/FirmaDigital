@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { EmployeePayslip, EmployeeProfile } from "../types/payslip";
 import { isPayslipSigned } from "../store/payslipStore";
 import PayslipCard from "../components/PayslipCard";
+import { logout } from "../api/auth";
 
 
 function getInitials(name: string) {
@@ -18,6 +20,8 @@ interface EmployeeDashboardProps {
 }
 
 function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps) {
+  const navigate = useNavigate();
+
   const [payslips] = useState<EmployeePayslip[]>(() =>
     initialPayslips.map(p =>
       isPayslipSigned(p.id) && p.status === "Pending"
@@ -26,6 +30,11 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
     )
   );
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   const countSigned = payslips.filter(p => p.status === "Signed").length;
   const countPending = payslips.filter(p => p.status === "Pending").length;
@@ -68,16 +77,26 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
       <div className="max-w-2xl mx-auto p-md sm:p-xl">
 
         {/* Encabezado del empleado */}
-        <div className="flex items-center gap-md mb-xl">
-          <div className="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-[18px]">
-            {getInitials(employee.fullName)}
+        <div className="flex items-center justify-between gap-md mb-xl">
+          <div className="flex items-center gap-md">
+            <div className="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-[18px]">
+              {getInitials(employee.fullName)}
+            </div>
+            <div>
+              <h1 className="font-headline-md text-headline-md text-primary font-bold">{employee.fullName}</h1>
+              <p className="text-[12px] text-on-surface-variant">
+                {employee.employeeCode}{employee.position ? ` · ${employee.position}` : ""}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-headline-md text-headline-md text-primary font-bold">{employee.fullName}</h1>
-            <p className="text-[12px] text-on-surface-variant">
-              {employee.employeeCode}{employee.position ? ` · ${employee.position}` : ""}
-            </p>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-xs text-on-surface-variant hover:text-error transition-all text-[13px] shrink-0"
+            title="Cerrar sesión"
+          >
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+            <span className="hidden sm:inline">Salir</span>
+          </button>
         </div>
 
         {/* Tarjetas resumen */}

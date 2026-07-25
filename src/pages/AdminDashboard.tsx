@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { logout } from "../api/auth";
 
 import {
   fetchAdminDocuments,
@@ -16,6 +17,8 @@ import { todayInPeru, currentPeriodInPeru } from "../utils/peruDate";
 const statusLabel = (status: "Signed" | "Pending") => (status === "Signed" ? "Firmado" : "Pendiente");
 
 function AdminDashboard() {
+  const navigate = useNavigate();
+
   const [documents, setDocuments] = useState<AdminDocument[]>([]);
   const [employees, setEmployees] = useState<AdminEmployee[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -157,6 +160,11 @@ function AdminDashboard() {
     } finally {
       setCreatingEmployee(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
 
   const handleDeleteEmployee = async (employeeCode: string, fullName: string) => {
@@ -410,6 +418,17 @@ function AdminDashboard() {
               <p className="text-[10px] uppercase font-bold text-on-surface-variant dark:text-slate-400 tracking-tighter">Cuenta admin</p>
             </div>
           </div>
+
+          <div className="h-8 w-[1px] bg-outline-variant dark:bg-slate-700 hidden sm:block"></div>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-xs text-on-surface-variant dark:text-slate-300 hover:text-error dark:hover:text-red-400 transition-all font-body-md text-body-md"
+            title="Cerrar sesión"
+          >
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+            <span className="hidden sm:inline">Salir</span>
+          </button>
         </div>
       </header>
 
@@ -683,7 +702,8 @@ function AdminDashboard() {
                             Ver portal
                             <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                           </Link>
-                          <div className="mt-md pt-md border-t border-outline-variant dark:border-slate-800 flex justify-end">
+                        </div>
+                        <div className="mt-md pt-md border-t border-outline-variant dark:border-slate-800 flex justify-end">
                           <button
                             onClick={() => handleDeleteEmployee(emp.employee_code, emp.full_name)}
                             disabled={deletingEmployeeCode === emp.employee_code}
@@ -692,7 +712,6 @@ function AdminDashboard() {
                             <span className="material-symbols-outlined text-[14px]">person_remove</span>
                             {deletingEmployeeCode === emp.employee_code ? "Eliminando..." : "Eliminar empleado"}
                           </button>
-                        </div>
                         </div>
                       </div>
                     );
