@@ -40,7 +40,7 @@ function AppGate() {
   }
 
   if (session.role === "admin") {
-    return <AdminDashboard />;
+    return <AdminDashboard adminFullName={session.fullName} />;
   }
 
   if (payslipsLoading) {

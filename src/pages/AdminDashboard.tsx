@@ -16,7 +16,11 @@ import { todayInPeru, currentPeriodInPeru } from "../utils/peruDate";
 
 const statusLabel = (status: "Signed" | "Pending") => (status === "Signed" ? "Firmado" : "Pendiente");
 
-function AdminDashboard() {
+interface AdminDashboardProps {
+  adminFullName?: string;
+}
+
+function AdminDashboard({ adminFullName }: AdminDashboardProps) {
   const navigate = useNavigate();
 
   const [documents, setDocuments] = useState<AdminDocument[]>([]);
@@ -411,10 +415,14 @@ function AdminDashboard() {
 
           <div className="flex items-center gap-sm">
             <div className="w-10 h-10 rounded-full bg-surface-container-highest dark:bg-slate-800 overflow-hidden border border-outline-variant dark:border-slate-700 flex items-center justify-center">
-              <span className="text-[13px] font-bold text-primary dark:text-slate-200">A</span>
+              <span className="text-[13px] font-bold text-primary dark:text-slate-200">
+                {adminFullName ? getInitials(adminFullName) : "A"}
+              </span>
             </div>
             <div className="hidden lg:block">
-              <p className="font-body-md text-body-md font-semibold text-primary dark:text-slate-200">Administrador</p>
+              <p className="font-body-md text-body-md font-semibold text-primary dark:text-slate-200">
+                {adminFullName || "Administrador"}
+              </p>
               <p className="text-[10px] uppercase font-bold text-on-surface-variant dark:text-slate-400 tracking-tighter">Cuenta admin</p>
             </div>
           </div>
