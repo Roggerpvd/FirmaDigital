@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { EmployeePayslip, EmployeeProfile } from "../types/payslip";
 import { isPayslipSigned } from "../store/payslipStore";
 import PayslipCard from "../components/PayslipCard";
-import { logout } from "../api/auth";
+import { logout, changePassword } from "../api/auth";
 
 
 function getInitials(name: string) {
@@ -31,9 +31,54 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
   );
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
 
+  // Modal: Cambiar contraseña
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const handleLogout = async () => {
     await logout();
     navigate("/login");
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+    setPasswordSuccess(false);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword.length < 8) {
+      setPasswordError("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      setPasswordError(err.message || "No se pudo cambiar la contraseña.");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const countSigned = payslips.filter(p => p.status === "Signed").length;
@@ -89,14 +134,24 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
               </p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-xs text-on-surface-variant hover:text-error transition-all text-[13px] shrink-0"
-            title="Cerrar sesión"
-          >
-            <span className="material-symbols-outlined text-[20px]">logout</span>
-            <span className="hidden sm:inline">Salir</span>
-          </button>
+          <div className="flex items-center gap-lg shrink-0">
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-all text-[13px]"
+              title="Cambiar contraseña"
+            >
+              <span className="material-symbols-outlined text-[20px]">key</span>
+              <span className="hidden sm:inline">Contraseña</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-xs text-on-surface-variant hover:text-error transition-all text-[13px]"
+              title="Cerrar sesión"
+            >
+              <span className="material-symbols-outlined text-[20px]">logout</span>
+              <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
         </div>
 
         {/* Tarjetas resumen */}
@@ -151,6 +206,83 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
         </div>
 
       </div>
+
+      {/* Modal: Cambiar contraseña */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-md z-50">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-lg w-full max-w-sm">
+            {passwordSuccess ? (
+              <div className="text-center">
+                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-lg">
+                  <span className="material-symbols-outlined text-[28px]">check_circle</span>
+                </div>
+                <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-xs">Contraseña actualizada</h2>
+                <p className="text-[13px] text-on-surface-variant mb-lg">
+                  Tu contraseña se cambió correctamente. Cualquier otra sesión abierta con tu cuenta fue cerrada.
+                </p>
+                <button
+                  onClick={closePasswordModal}
+                  className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-all"
+                >
+                  Listo
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleChangePassword}>
+                <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-lg">Cambiar contraseña</h2>
+
+                <label className="block text-[12px] font-semibold text-on-surface-variant mb-xs">Contraseña actual</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  className="w-full border border-outline-variant rounded-lg px-md py-sm mb-md text-[13px] bg-surface"
+                />
+
+                <label className="block text-[12px] font-semibold text-on-surface-variant mb-xs">Nueva contraseña</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full border border-outline-variant rounded-lg px-md py-sm mb-md text-[13px] bg-surface"
+                />
+
+                <label className="block text-[12px] font-semibold text-on-surface-variant mb-xs">Confirmar nueva contraseña</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full border border-outline-variant rounded-lg px-md py-sm mb-lg text-[13px] bg-surface"
+                />
+
+                {passwordError && <p className="text-[12px] text-error mb-md">{passwordError}</p>}
+
+                <div className="flex gap-sm">
+                  <button
+                    type="button"
+                    onClick={closePasswordModal}
+                    className="flex-1 border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md hover:bg-surface-container transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changingPassword}
+                    className="flex-1 bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {changingPassword ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

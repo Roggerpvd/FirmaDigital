@@ -65,8 +65,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       netAmount: `S/ ${Number(p.net_amount).toFixed(2)}`,
       issueDate: new Date(p.issue_date).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }),
       status: p.status,
-      pdfUrl: p.pdf_url,
-      signedPdfUrl: p.signed_pdf_url,
+      // El PDF vive en storage privado: no exponemos su URL directamente.
+      // El frontend siempre debe cargarlo a través de este endpoint autenticado.
+      hasPdf: Boolean(p.pdf_url || p.signed_pdf_url),
+      viewUrl: (p.pdf_url || p.signed_pdf_url) ? `/api/payslips/${p.payslip_code}/view` : undefined,
     });
   } catch (error) {
     console.error("Error al obtener boleta:", error);

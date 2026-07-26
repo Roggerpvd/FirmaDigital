@@ -54,6 +54,20 @@ export async function deleteAdminEmployee(employeeCode: string): Promise<void> {
   if (!res.ok) throw new Error(data.error || "No se pudo eliminar el empleado");
 }
 
+export async function resetAdminEmployeePassword(
+  employeeCode: string
+): Promise<{ email: string; fullName: string; temporaryPassword: string }> {
+  const res = await fetch("/api/admin/employees", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ employeeCode }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "No se pudo restablecer la contraseña");
+  return data;
+}
+
 export async function createAdminPayslip(payload: {
   employeeEmail: string;
   payslipCode: string;

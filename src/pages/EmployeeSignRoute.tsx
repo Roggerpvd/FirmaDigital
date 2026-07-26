@@ -12,8 +12,8 @@ interface PayslipDetail {
   netAmount: string;
   issueDate: string;
   status: string;
-  pdfUrl?: string;
-  signedPdfUrl?: string;
+  hasPdf: boolean;
+  viewUrl?: string;
 }
 
 function EmployeeSignRoute() {

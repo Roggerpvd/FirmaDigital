@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { put } from "@vercel/blob";
+import { put, get } from "@vercel/blob";
 import { db } from "../_lib/db.js";
 import { todayInPeru, currentPeriodInPeru } from "../_lib/peruDate.js";
 
@@ -61,6 +61,7 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
   const pdfBuffer = Buffer.from(base64Data, "base64");
 
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
+  console.log("DEBUG env keys con BLOB:", Object.keys(process.env).filter(k => k.includes("BLOB")));
 
   if (!blobToken) {
     console.error("Falta el BLOB_READ_WRITE_TOKEN en el servidor");
@@ -73,7 +74,7 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
     `payslips/${payslipCode}-original.pdf`,
     pdfBuffer,
     {
-      access: "public",
+      access: "private",
       addRandomSuffix: true,
       contentType: "application/pdf",
       token: blobToken, // Pasamos el token explícitamente
@@ -115,12 +116,19 @@ async function handleDownload(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const fileResponse = await fetch(fileUrl);
-  if (!fileResponse.ok) {
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
+  console.log("DEBUG env keys con BLOB:", Object.keys(process.env).filter(k => k.includes("BLOB")));
+  if (!blobToken) {
+    console.error("Falta el BLOB_READ_WRITE_TOKEN en el servidor");
+    return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
+  }
+
+  const blobResult = await get(fileUrl, { access: "private", token: blobToken });
+  if (!blobResult || blobResult.statusCode !== 200) {
     return res.status(502).json({ error: "No se pudo obtener el PDF del storage" });
   }
 
-  const arrayBuffer = await fileResponse.arrayBuffer();
+  const arrayBuffer = await new Response(blobResult.stream).arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const suffix = wantsSigned ? "-firmada" : "";
 

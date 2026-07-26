@@ -7,6 +7,7 @@ import {
   fetchAdminEmployees,
   createAdminEmployee,
   deleteAdminEmployee,
+  resetAdminEmployeePassword,
   uploadAdminPayslip,
   downloadAdminPayslip,
   type AdminDocument,
@@ -46,10 +47,13 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
   const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
   const [newEmployeePosition, setNewEmployeePosition] = useState("");
   const [creatingEmployee, setCreatingEmployee] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState<{ email: string; password: string } | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<{ email: string; password: string; title: string; description: string } | null>(null);
 
   // Eliminar empleado
   const [deletingEmployeeCode, setDeletingEmployeeCode] = useState<string | null>(null);
+
+  // Restablecer contraseña de empleado
+  const [resettingEmployeeCode, setResettingEmployeeCode] = useState<string | null>(null);
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
@@ -153,7 +157,12 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
         position: newEmployeePosition || undefined,
       });
 
-      setGeneratedPassword({ email: result.employee.email, password: result.temporaryPassword });
+      setGeneratedPassword({
+        email: result.employee.email,
+        password: result.temporaryPassword,
+        title: "Empleado creado",
+        description: "Comunícale al empleado su correo y esta contraseña temporal. Solo se muestra esta vez.",
+      });
       setShowEmployeeModal(false);
       setNewEmployeeName("");
       setNewEmployeeEmail("");
@@ -186,6 +195,28 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       setToast({ message: err.message || "No se pudo eliminar el empleado.", type: "error" });
     } finally {
       setDeletingEmployeeCode(null);
+    }
+  };
+
+  const handleResetEmployeePassword = async (employeeCode: string, fullName: string) => {
+    const confirmed = window.confirm(
+      `¿Restablecer la contraseña de ${fullName} (${employeeCode})? Se generará una nueva contraseña temporal y se cerrará cualquier sesión activa de ese empleado.`
+    );
+    if (!confirmed) return;
+
+    setResettingEmployeeCode(employeeCode);
+    try {
+      const result = await resetAdminEmployeePassword(employeeCode);
+      setGeneratedPassword({
+        email: result.email,
+        password: result.temporaryPassword,
+        title: "Contraseña restablecida",
+        description: `Comunícale a ${result.fullName} su nueva contraseña temporal. Solo se muestra esta vez.`,
+      });
+    } catch (err: any) {
+      setToast({ message: err.message || "No se pudo restablecer la contraseña.", type: "error" });
+    } finally {
+      setResettingEmployeeCode(null);
     }
   };
 
@@ -327,9 +358,9 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
             <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-lg">
               <span className="material-symbols-outlined text-[28px]">check_circle</span>
             </div>
-            <h3 className="font-headline-sm text-headline-sm font-bold text-primary dark:text-slate-100 mb-xs">Empleado creado</h3>
+            <h3 className="font-headline-sm text-headline-sm font-bold text-primary dark:text-slate-100 mb-xs">{generatedPassword.title}</h3>
             <p className="text-[13px] text-on-surface-variant dark:text-slate-400 mb-lg">
-              Comunícale al empleado su correo y esta contraseña temporal. Solo se muestra esta vez.
+              {generatedPassword.description}
             </p>
             <div className="bg-surface-container dark:bg-slate-800 rounded-lg p-md mb-lg text-left space-y-xs">
               <p className="text-[12px] text-on-surface-variant dark:text-slate-400">Correo</p>
@@ -711,7 +742,15 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                             <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                           </Link>
                         </div>
-                        <div className="mt-md pt-md border-t border-outline-variant dark:border-slate-800 flex justify-end">
+                        <div className="mt-md pt-md border-t border-outline-variant dark:border-slate-800 flex justify-end gap-lg">
+                          <button
+                            onClick={() => handleResetEmployeePassword(emp.employee_code, emp.full_name)}
+                            disabled={resettingEmployeeCode === emp.employee_code}
+                            className="text-[11px] font-semibold text-primary dark:text-sky-400 hover:underline flex items-center gap-xs disabled:opacity-50"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">key</span>
+                            {resettingEmployeeCode === emp.employee_code ? "Restableciendo..." : "Restablecer contraseña"}
+                          </button>
                           <button
                             onClick={() => handleDeleteEmployee(emp.employee_code, emp.full_name)}
                             disabled={deletingEmployeeCode === emp.employee_code}

@@ -150,5 +150,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  if (req.method === "PATCH") {
+    try {
+      const { employeeCode } = (req.body ?? {}) as { employeeCode?: string };
+
+      if (!employeeCode) {
+        return res.status(400).json({ error: "Falta el código de empleado" });
+      }
+
+      const employeeResult = await db.sql`
+        SELECT id, full_name, email FROM employees WHERE employee_code = ${employeeCode}
+      `;
+
+      if (employeeResult.rows.length === 0) {
+        return res.status(404).json({ error: "Empleado no encontrado" });
+      }
+
+      const employee = employeeResult.rows[0];
+      const randomPassword = generateRandomPassword();
+      const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+      await db.sql`
+        UPDATE employees SET password_hash = ${passwordHash} WHERE id = ${employee.id}
+      `;
+
+      // Cierra todas las sesiones activas del empleado: con la contraseña vieja invalidada,
+      // cualquier sesión abierta (suya o de alguien más que la tuviera) queda desconectada.
+      await db.sql`DELETE FROM sessions WHERE employee_id = ${employee.id}`;
+
+      return res.status(200).json({
+        success: true,
+        email: employee.email,
+        fullName: employee.full_name,
+        temporaryPassword: randomPassword,
+      });
+    } catch (error) {
+      console.error("Error al restablecer contraseña de empleado:", error);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    }
+  }
+
   return res.status(405).json({ error: "Método no permitido" });
 }

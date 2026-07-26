@@ -9,8 +9,8 @@ interface PayslipData {
   period: string;
   netAmount: string;
   issueDate: string;
-  pdfUrl?: string;
-  signedPdfUrl?: string;
+  hasPdf?: boolean;
+  viewUrl?: string;
 }
 
 const MOCK_PAYSLIP: PayslipData = {
@@ -37,7 +37,11 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
   const [canvasIsEmpty, setCanvasIsEmpty] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [signedAt, setSignedAt] = useState<string>("");
-  const [signedPdfUrl, setSignedPdfUrl] = useState<string | undefined>(payslip.signedPdfUrl);
+  const [isSigned, setIsSigned] = useState(false);
+  // Se incrementa tras firmar para forzar que el <iframe> recargue el PDF actualizado
+  // (nuestro endpoint /view ya manda Cache-Control: no-store, esto solo evita que
+  // el iframe siga mostrando en memoria la versión que ya tenía cargada).
+  const [refreshKey, setRefreshKey] = useState(0);
   const [checkingSavedSignature, setCheckingSavedSignature] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -170,10 +174,8 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       }
 
       setSignedAt(data.signedAt);
-      // Le agregamos un parámetro con la hora actual a la URL del PDF firmado.
-      // Esto evita que el navegador muestre una versión vieja cacheada del PDF,
-      // ya que la URL del archivo es siempre la misma para una misma boleta.
-      setSignedPdfUrl(data.signedPdfUrl ? `${data.signedPdfUrl}?v=${Date.now()}` : data.signedPdfUrl);
+      setIsSigned(true);
+      setRefreshKey((k) => k + 1);
       setStep("success");
     } catch {
       alert("No se pudo conectar con el servidor");
@@ -434,9 +436,9 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                     Tu boleta {payslip.id} fue firmada y enviada correctamente el {signedAt}.
                   </p>
                   <div className="flex flex-col gap-sm">
-                    {signedPdfUrl && (
+                    {payslip.viewUrl && (
                       <a
-                        href={signedPdfUrl}
+                        href={`${payslip.viewUrl}?t=${refreshKey}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full text-center bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
@@ -468,11 +470,12 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
             <div className="order-1 lg:order-2 lg:sticky lg:top-xl">
               <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
                 <p className="text-[12px] text-on-surface-variant mb-sm font-semibold">
-                  {signedPdfUrl ? "Boleta firmada" : "Vista previa de la boleta"}
+                  {isSigned ? "Boleta firmada" : "Vista previa de la boleta"}
                 </p>
-                {(signedPdfUrl || payslip.pdfUrl) ? (
+                {payslip.viewUrl ? (
                   <iframe
-                    src={signedPdfUrl || payslip.pdfUrl}
+                    key={refreshKey}
+                    src={`${payslip.viewUrl}?t=${refreshKey}`}
                     title={`Boleta ${payslip.id}`}
                     className="w-full h-[75vh] lg:h-[calc(100vh-220px)] rounded-lg border border-outline-variant bg-surface-container-low"
                   />

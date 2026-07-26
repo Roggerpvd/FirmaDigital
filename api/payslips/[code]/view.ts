@@ -1,4 +1,9 @@
-// api/payslips/[code]/download.ts
+// api/payslips/[code]/view.ts
+//
+// Sirve el PDF de la boleta (firmado si existe, si no el original) para previsualizarlo
+// inline (ej. dentro de un <iframe>). A diferencia de download.ts, no fuerza la descarga.
+// El PDF vive en storage PRIVADO de Vercel Blob, así que esta es la única forma legítima
+// de verlo: siempre pasando por acá, que valida sesión y dueño antes de servirlo.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { get } from "@vercel/blob";
@@ -33,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const session = sessionResult.rows[0];
 
     if (session.user_type !== "employee") {
-      return res.status(403).json({ error: "Solo empleados pueden descargar sus boletas" });
+      return res.status(403).json({ error: "Solo empleados pueden ver sus boletas" });
     }
 
     if (new Date(session.expires_at) < new Date()) {
@@ -46,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const result = await db.sql`
-      SELECT pdf_url, signed_pdf_url, status FROM payslips
+      SELECT pdf_url, signed_pdf_url FROM payslips
       WHERE payslip_code = ${code} AND employee_id = ${session.employee_id}
     `;
 
@@ -55,8 +60,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { pdf_url, signed_pdf_url } = result.rows[0];
-
-    // Prioriza siempre el PDF firmado si existe; si no, cae al original
     const fileUrl = signed_pdf_url || pdf_url;
     if (!fileUrl) {
       return res.status(404).json({ error: "Esta boleta no tiene un PDF asociado" });
@@ -75,16 +78,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const arrayBuffer = await new Response(blobResult.stream).arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const suffix = signed_pdf_url ? "-firmada" : "";
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${code}${suffix}.pdf"`);
+    // "inline" (no "attachment"): el navegador lo muestra en el iframe en vez de descargarlo.
+    res.setHeader("Content-Disposition", "inline");
     res.setHeader("Content-Length", buffer.length.toString());
-    res.setHeader("Cache-Control", "private, max-age=0, no-cache");
+    // Nunca cachear: cada boleta puede pasar de "pendiente" a "firmada" y el contenido cambia.
+    res.setHeader("Cache-Control", "private, max-age=0, no-cache, no-store");
 
     return res.send(buffer);
   } catch (error) {
-    console.error("Error al descargar boleta:", error);
+    console.error("Error al previsualizar boleta:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 }
