@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import { db } from "../_lib/db.js";
 
 const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 12;
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
@@ -53,6 +54,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
       return res.status(400).json({ error: `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres` });
+    }
+
+    if (newPassword.length > MAX_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `La nueva contraseña no debe exceder los ${MAX_PASSWORD_LENGTH} caracteres` });
     }
 
     if (newPassword === currentPassword) {

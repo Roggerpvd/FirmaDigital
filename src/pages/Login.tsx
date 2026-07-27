@@ -8,6 +8,7 @@ function Login() {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +74,7 @@ function Login() {
     setStep("email");
     setPassword("");
     setErrorMessage("");
+    setShowPassword(false);
   };
 
   return (
@@ -119,14 +121,27 @@ function Login() {
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant mb-xs">
                   Contraseña
                 </label>
-                <input
-                  type="password"
-                  required
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-surface-container border border-outline-variant rounded-lg px-md py-sm font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoFocus
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-surface-container border border-outline-variant rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {errorMessage && <p className="text-[12px] text-error">{errorMessage}</p>}

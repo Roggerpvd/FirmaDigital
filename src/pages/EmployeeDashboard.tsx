@@ -39,6 +39,9 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -52,6 +55,9 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
     setConfirmPassword("");
     setPasswordError(null);
     setPasswordSuccess(false);
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -60,6 +66,10 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
 
     if (newPassword.length < 8) {
       setPasswordError("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (newPassword.length > 12) {
+      setPasswordError("La nueva contraseña no debe exceder los 12 caracteres.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -232,33 +242,75 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
                 <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-lg">Cambiar contraseña</h2>
 
                 <label className="block text-[12px] font-semibold text-on-surface-variant mb-xs">Contraseña actual</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  className="w-full border border-outline-variant rounded-lg px-md py-sm mb-md text-[13px] bg-surface"
-                />
+                <div className="relative mb-md">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+                    title={showCurrentPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showCurrentPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
 
                 <label className="block text-[12px] font-semibold text-on-surface-variant mb-xs">Nueva contraseña</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full border border-outline-variant rounded-lg px-md py-sm mb-md text-[13px] bg-surface"
-                />
+                <div className="relative mb-md">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    maxLength={12}
+                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+                    title={showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showNewPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-on-surface-variant -mt-sm mb-md">Entre 8 y 12 caracteres.</p>
 
                 <label className="block text-[12px] font-semibold text-on-surface-variant mb-xs">Confirmar nueva contraseña</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full border border-outline-variant rounded-lg px-md py-sm mb-lg text-[13px] bg-surface"
-                />
+                <div className="relative mb-lg">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    maxLength={12}
+                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+                    title={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showConfirmPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
 
                 {passwordError && <p className="text-[12px] text-error mb-md">{passwordError}</p>}
 
