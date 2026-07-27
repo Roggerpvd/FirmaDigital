@@ -86,13 +86,6 @@ export async function createAdminPayslip(payload: {
   if (!res.ok) throw new Error(data.error || "No se pudo crear la boleta");
 }
 
-export async function fetchPayslipProof(payslipCode: string): Promise<string> {
-  const res = await fetch(`/api/admin/payslips/${payslipCode}/proof`, { credentials: "include" });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "No se pudo obtener el comprobante");
-  return data.proofImageUrl;
-}
-
 export async function uploadAdminPayslip(payload: {
   employeeEmail: string;
   pdfBase64: string;

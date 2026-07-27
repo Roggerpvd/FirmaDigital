@@ -61,7 +61,6 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
   const pdfBuffer = Buffer.from(base64Data, "base64");
 
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
-  console.log("DEBUG env keys con BLOB:", Object.keys(process.env).filter(k => k.includes("BLOB")));
 
   if (!blobToken) {
     console.error("Falta el BLOB_READ_WRITE_TOKEN en el servidor");
@@ -117,7 +116,6 @@ async function handleDownload(req: VercelRequest, res: VercelResponse) {
   }
 
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
-  console.log("DEBUG env keys con BLOB:", Object.keys(process.env).filter(k => k.includes("BLOB")));
   if (!blobToken) {
     console.error("Falta el BLOB_READ_WRITE_TOKEN en el servidor");
     return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
