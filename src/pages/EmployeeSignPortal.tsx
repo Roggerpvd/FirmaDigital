@@ -234,7 +234,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
         {/* Cargando: revisando si ya existe una firma guardada */}
         {checkingSavedSignature && (
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm flex items-center justify-center py-16">
+          <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm flex items-center justify-center py-16">
             <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
           </div>
         )}
@@ -247,7 +247,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
               {/* Paso: revisión de la boleta */}
               {step === "review" && (
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
                   <div className="flex items-center justify-between mb-lg">
                     <h2 className="font-headline-md text-headline-md text-primary">Tu Boleta de Pago</h2>
                     <div className="inline-flex items-center gap-sm px-md py-xs rounded-full bg-amber-50 text-amber-700 text-label-md font-semibold border border-amber-100">
@@ -256,7 +256,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                     </div>
                   </div>
 
-                  <div className="space-y-sm bg-surface-container-low rounded-lg p-lg mb-lg">
+                  <div className="space-y-sm bg-surface-container-low/10 backdrop-blur-md rounded-lg p-lg mb-lg">
                     <div className="flex justify-between text-[13px]">
                       <span className="text-on-surface-variant">ID de Boleta</span>
                       <span className="font-data-mono text-data-mono text-primary">{payslip.id}</span>
@@ -287,24 +287,24 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
               {/* Paso: captura de firma */}
               {step === "signing" && (
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
                   <div className="flex items-center justify-between mb-lg">
                     <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Firma tu Boleta</h2>
                     <button onClick={() => setStep("review")} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
                   </div>
 
                   {/* Tabs de método de firma */}
-                  <div className="flex gap-sm mb-lg bg-surface-container-low rounded-lg p-xs">
+                  <div className="flex gap-sm mb-lg bg-surface-container-low/10 backdrop-blur-md rounded-lg p-xs">
                     <button
                       onClick={() => { setSignMode("draw"); setUploadError(null); }}
-                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "draw" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"}`}
+                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "draw" ? "bg-surface-container-lowest/10 backdrop-blur-md text-primary shadow-sm" : "text-on-surface-variant"}`}
                     >
                       <span className="material-symbols-outlined text-[18px]">draw</span>
                       Dibujar firma
                     </button>
                     <button
                       onClick={() => { setSignMode("upload"); }}
-                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "upload" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"}`}
+                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "upload" ? "bg-surface-container-lowest/10 backdrop-blur-md text-primary shadow-sm" : "text-on-surface-variant"}`}
                     >
                       <span className="material-symbols-outlined text-[18px]">upload_file</span>
                       Subir imagen PNG
@@ -321,7 +321,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                           onPointerMove={handlePointerMove}
                           onPointerUp={handlePointerUp}
                           onPointerLeave={handlePointerUp}
-                          className="w-full h-56 bg-surface-container-low border-2 border-dashed border-outline-variant rounded-lg touch-none cursor-crosshair"
+                          className="w-full h-56 bg-surface-container-low/10 backdrop-blur-md border-2 border-dashed border-outline-variant rounded-lg touch-none cursor-crosshair"
                         />
                         {canvasIsEmpty && (
                           <p className="absolute inset-0 flex items-center justify-center text-on-surface-variant text-[13px] pointer-events-none opacity-50">
@@ -341,17 +341,17 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                     <div>
                       <p className="text-[12px] text-on-surface-variant mb-sm">Sube una imagen PNG de tu firma (fondo transparente recomendado, máx. 2MB).</p>
                       {!signatureDataUrl ? (
-                        <label className="custom-dashed h-56 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low transition-colors relative">
+                        <label className="custom-dashed h-56 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low/10 backdrop-blur-md transition-colors relative">
                           <input type="file" accept="image/png" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                           <span className="material-symbols-outlined text-[40px] text-outline opacity-40">image</span>
                           <p className="text-[13px] text-on-surface-variant">Haz clic para seleccionar tu firma (.png)</p>
                         </label>
                       ) : (
-                        <div className="h-56 bg-surface-container-low border border-outline-variant rounded-lg flex items-center justify-center relative p-md">
+                        <div className="h-56 bg-surface-container-low/10 backdrop-blur-md border border-outline-variant rounded-lg flex items-center justify-center relative p-md">
                           <img src={signatureDataUrl} alt="Firma cargada" className="max-h-full max-w-full object-contain" />
                           <button
                             onClick={() => setSignatureDataUrl(null)}
-                            className="absolute top-sm right-sm material-symbols-outlined text-[18px] text-outline hover:text-error bg-surface-container-lowest rounded-full p-xs"
+                            className="absolute top-sm right-sm material-symbols-outlined text-[18px] text-outline hover:text-error bg-surface-container-lowest/10 backdrop-blur-md rounded-full p-xs"
                           >
                             close
                           </button>
@@ -373,16 +373,16 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
               {/* Paso: confirmación final */}
               {step === "confirm" && signatureDataUrl && (
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
                   <div className="flex items-center justify-between mb-lg">
                     <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Confirma tu Firma</h2>
                   </div>
 
-                  <div className="bg-surface-container-low border border-outline-variant rounded-lg p-lg mb-lg flex items-center justify-center h-40">
+                  <div className="bg-surface-container-low/10 backdrop-blur-md border border-outline-variant rounded-lg p-lg mb-lg flex items-center justify-center h-40">
                     <img src={signatureDataUrl} alt="Vista previa de firma" className="max-h-full max-w-full object-contain" />
                   </div>
 
-                  <div className="bg-surface-container-low rounded-lg p-md mb-lg text-[12px] text-on-surface-variant space-y-xs">
+                  <div className="bg-surface-container-low/10 backdrop-blur-md rounded-lg p-md mb-lg text-[12px] text-on-surface-variant space-y-xs">
                     <p><span className="font-semibold text-primary">Boleta:</span> {payslip.id} — {payslip.period}</p>
                     <p><span className="font-semibold text-primary">Empleado:</span> {payslip.employeeName}</p>
                   </div>
@@ -419,7 +419,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
               {/* Paso: enviando */}
               {step === "submitting" && (
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm flex flex-col items-center justify-center py-16">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm flex flex-col items-center justify-center py-16">
                   <div className="w-10 h-10 border-4 border-outline-variant border-t-primary rounded-full animate-spin mb-lg"></div>
                   <p className="text-body-md font-body-md text-on-surface-variant">Enviando tu boleta firmada...</p>
                 </div>
@@ -427,7 +427,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
               {/* Paso: éxito */}
               {step === "success" && (
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm text-center">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm text-center">
                   <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-lg">
                     <span className="material-symbols-outlined text-[32px]">check_circle</span>
                   </div>
@@ -441,7 +441,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                         href={`${payslip.viewUrl}?t=${refreshKey}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full text-center bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
+                        className="w-full text-center bg-surface/10 backdrop-blur-md border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container/10 backdrop-blur-md transition-colors flex items-center justify-center gap-sm"
                       >
                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                         Ver PDF firmado
@@ -449,7 +449,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                     )}
                     <button
                       onClick={handleDownloadProof}
-                      className="w-full bg-surface border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container transition-colors flex items-center justify-center gap-sm"
+                      className="w-full bg-surface/10 backdrop-blur-md border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md text-primary hover:bg-surface-container/10 backdrop-blur-md transition-colors flex items-center justify-center gap-sm"
                     >
                       <span className="material-symbols-outlined text-[20px]">download</span>
                       Descargar comprobante
@@ -468,7 +468,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
 
             {/* Columna: PDF, fijo y visible en todos los pasos (antes y después de firmar) */}
             <div className="order-1 lg:order-2 lg:sticky lg:top-xl">
-              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+              <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-lg shadow-sm">
                 <p className="text-[12px] text-on-surface-variant mb-sm font-semibold">
                   {isSigned ? "Boleta firmada" : "Vista previa de la boleta"}
                 </p>
@@ -477,7 +477,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                     key={refreshKey}
                     src={`${payslip.viewUrl}?t=${refreshKey}`}
                     title={`Boleta ${payslip.id}`}
-                    className="w-full h-[75vh] lg:h-[calc(100vh-220px)] rounded-lg border border-outline-variant bg-surface-container-low"
+                    className="w-full h-[75vh] lg:h-[calc(100vh-220px)] rounded-lg border border-outline-variant bg-surface-container-low/10 backdrop-blur-md"
                   />
                 ) : (
                   <div className="h-64 flex items-center justify-center bg-amber-50 border border-amber-100 rounded-lg text-[12px] text-amber-700 p-md text-center">

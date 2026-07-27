@@ -166,15 +166,15 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
 
         {/* Tarjetas resumen */}
         <div className="grid grid-cols-3 gap-md mb-xl">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm text-center">
+          <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-lg shadow-sm text-center">
             <p className="text-2xl font-bold text-primary">{payslips.length}</p>
             <p className="text-[12px] text-on-surface-variant mt-xs">Total</p>
           </div>
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm text-center">
+          <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-lg shadow-sm text-center">
             <p className="text-2xl font-bold text-emerald-600">{countSigned}</p>
             <p className="text-[12px] text-on-surface-variant mt-xs">Firmadas</p>
           </div>
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm text-center">
+          <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-lg shadow-sm text-center">
             <p className="text-2xl font-bold text-amber-600">{countPending}</p>
             <p className="text-[12px] text-on-surface-variant mt-xs">Pendientes</p>
           </div>
@@ -219,8 +219,8 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
 
       {/* Modal: Cambiar contraseña */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-md z-50">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-lg w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-md z-50">
+          <div className="bg-surface-container-lowest/70 backdrop-blur-xl border border-white/60 rounded-xl p-xl shadow-2xl ring-1 ring-black/5 w-full max-w-sm">
             {passwordSuccess ? (
               <div className="text-center">
                 <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-lg">
@@ -248,7 +248,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     required
-                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface"
+                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface/10 backdrop-blur-md"
                   />
                   <button
                     type="button"
@@ -272,7 +272,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
                     required
                     minLength={8}
                     maxLength={12}
-                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface"
+                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface/10 backdrop-blur-md"
                   />
                   <button
                     type="button"
@@ -297,7 +297,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
                     required
                     minLength={8}
                     maxLength={12}
-                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface"
+                    className="w-full border border-outline-variant rounded-lg px-md py-sm pr-11 text-[13px] bg-surface/10 backdrop-blur-md"
                   />
                   <button
                     type="button"
@@ -318,7 +318,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
                   <button
                     type="button"
                     onClick={closePasswordModal}
-                    className="flex-1 border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md hover:bg-surface-container transition-colors"
+                    className="flex-1 border border-outline-variant px-lg py-md rounded-lg font-body-md text-body-md hover:bg-surface-container/10 backdrop-blur-md transition-colors"
                   >
                     Cancelar
                   </button>

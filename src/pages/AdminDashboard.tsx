@@ -58,9 +58,6 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
 
-  // Ayuda
-  const [helpOpen, setHelpOpen] = useState(false);
-
   // Filtro de orden y mes
   const [sortOrder, setSortOrder] = useState<"recent" | "name-asc" | "name-desc">("recent");
   const [sortOpen, setSortOpen] = useState(false);
@@ -322,7 +319,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
   if (loadError) {
     return (
       <div className="min-h-screen bg-transparent text-on-surface flex items-center justify-center p-md">
-        <div className="max-w-sm text-center bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+        <div className="max-w-sm text-center bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
           <span className="material-symbols-outlined text-[40px] text-error opacity-70 mb-md">error</span>
           <p className="text-[13px] text-on-surface-variant mb-lg">{loadError}</p>
           <button onClick={loadData} className="text-primary text-[13px] font-semibold hover:underline">
@@ -337,7 +334,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
     <div className={`min-h-screen transition-colors duration-200 ${isDarkMode ? "dark bg-slate-950 text-slate-100" : "bg-transparent text-on-surface"}`}>
       {/* Toast */}
       {toast && (
-        <div className="fixed top-5 right-5 z-[100] max-w-sm rounded-lg shadow-lg border border-outline-variant p-md flex items-start gap-md bg-surface-container-lowest dark:bg-slate-900">
+        <div className="fixed top-5 right-5 z-[100] max-w-sm rounded-lg shadow-lg border border-outline-variant p-md flex items-start gap-md bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md">
           <span className={`material-symbols-outlined ${toast.type === "success" ? "text-emerald-500" : toast.type === "error" ? "text-error" : "text-sky-500"}`}>
             {toast.type === "success" ? "check_circle" : toast.type === "error" ? "error" : "info"}
           </span>
@@ -354,7 +351,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       {/* Modal: contraseña generada para nuevo empleado */}
       {generatedPassword && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] flex items-center justify-center p-md">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 w-full max-w-md rounded-xl p-xl shadow-xl text-center">
+          <div className="bg-surface-container-lowest/70 backdrop-blur-xl dark:bg-slate-900/70 border border-white/60 dark:border-slate-700/60 w-full max-w-md rounded-xl p-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 text-center">
             <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-lg">
               <span className="material-symbols-outlined text-[28px]">check_circle</span>
             </div>
@@ -362,7 +359,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
             <p className="text-[13px] text-on-surface-variant dark:text-slate-400 mb-lg">
               {generatedPassword.description}
             </p>
-            <div className="bg-surface-container dark:bg-slate-800 rounded-lg p-md mb-lg text-left space-y-xs">
+            <div className="bg-surface-container/60 backdrop-blur-xl dark:bg-slate-800/60 border border-white/40 dark:border-slate-700/40 rounded-lg p-md mb-lg text-left space-y-xs shadow-inner">
               <p className="text-[12px] text-on-surface-variant dark:text-slate-400">Correo</p>
               <p className="font-data-mono text-data-mono text-primary dark:text-slate-100">{generatedPassword.email}</p>
               <p className="text-[12px] text-on-surface-variant dark:text-slate-400 mt-sm">Contraseña temporal</p>
@@ -379,11 +376,11 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       )}
 
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm backdrop-blur-sm z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`w-[280px] h-screen fixed left-0 top-0 bg-surface-container-lowest dark:bg-slate-900 border-r border-outline-variant dark:border-slate-800 flex flex-col py-lg px-md z-50 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`w-[280px] h-screen fixed left-0 top-0 bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border-r border-outline-variant dark:border-slate-800 flex flex-col py-lg px-md z-50 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="mb-xl px-sm flex items-center justify-between">
           <div>
             <h1 className="font-headline-sm text-headline-sm font-bold text-primary dark:text-slate-100">Mister Pan</h1>
@@ -401,7 +398,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
             <div
               key={item.key}
               onClick={() => { setActiveTab(item.key as typeof activeTab); setSidebarOpen(false); }}
-              className={`flex items-center gap-md py-md px-md rounded-lg transition-colors cursor-pointer active:scale-95 ${activeTab === item.key ? "text-primary dark:text-slate-100 font-bold border-r-2 border-primary bg-surface-container-low dark:bg-slate-800" : "text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-low dark:hover:bg-slate-800"}`}
+              className={`flex items-center gap-md py-md px-md rounded-lg transition-colors cursor-pointer ${activeTab === item.key ? "text-primary dark:text-slate-100 font-bold border-r-2 border-primary bg-surface-container-low dark:bg-slate-800" : "text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-low dark:hover:bg-slate-800"}`}
             >
               <span className="material-symbols-outlined">{item.icon}</span>
               <span className="font-body-md text-body-md">{item.label}</span>
@@ -411,10 +408,10 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       </aside>
 
       {/* Header */}
-      <header className="h-[72px] fixed top-0 right-0 w-full md:w-[calc(100%-280px)] bg-surface dark:bg-slate-900 border-b border-outline-variant dark:border-slate-800 flex items-center justify-between px-xl z-40 transition-colors duration-200">
+      <header className="h-[72px] fixed top-0 right-0 w-full md:w-[calc(100%-280px)] bg-surface/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border-b border-outline-variant dark:border-slate-800 flex items-center justify-between px-xl z-40 transition-colors duration-200">
         <div className="flex items-center gap-md">
           <button onClick={() => setSidebarOpen(true)} className="md:hidden material-symbols-outlined text-on-surface-variant dark:text-slate-300 hover:text-primary">menu</button>
-          <div className="flex items-center bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-full px-md py-sm w-48 sm:w-96 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/20 dark:focus-within:ring-sky-500/20 focus-within:border-primary dark:focus-within:border-sky-500">
+          <div className="flex items-center bg-surface-container/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-full px-md py-sm w-48 sm:w-96 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/20 dark:focus-within:ring-sky-500/20 focus-within:border-primary dark:focus-within:border-sky-500">
             <span className="material-symbols-outlined text-on-surface-variant dark:text-slate-400 mr-sm">search</span>
             <input
               value={searchQuery}
@@ -435,17 +432,10 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
             {isDarkMode ? "light_mode" : "dark_mode"}
           </button>
 
-          <button
-            onClick={() => setHelpOpen(true)}
-            className="material-symbols-outlined text-on-surface-variant dark:text-slate-300 hover:text-primary dark:hover:text-slate-100 transition-all"
-          >
-            help
-          </button>
-
           <div className="h-8 w-[1px] bg-outline-variant dark:bg-slate-700 hidden sm:block"></div>
 
           <div className="flex items-center gap-sm">
-            <div className="w-10 h-10 rounded-full bg-surface-container-highest dark:bg-slate-800 overflow-hidden border border-outline-variant dark:border-slate-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-surface-container-highest/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md overflow-hidden border border-outline-variant dark:border-slate-700 flex items-center justify-center">
               <span className="text-[13px] font-bold text-primary dark:text-slate-200">
                 {adminFullName ? getInitials(adminFullName) : "A"}
               </span>
@@ -484,21 +474,21 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                 </div>
                 <div className="flex gap-md">
                   <div className="relative">
-                    <button onClick={() => { setMonthOpen(!monthOpen); setSortOpen(false); }} className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 px-lg py-md rounded-lg font-body-md text-body-md hover:bg-surface-container dark:hover:bg-slate-800 transition-colors flex items-center gap-sm active:scale-95 text-primary dark:text-slate-200">
+                    <button onClick={() => { setMonthOpen(!monthOpen); setSortOpen(false); }} className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 px-lg py-md rounded-lg font-body-md text-body-md hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800 transition-colors flex items-center gap-sm active:scale-95 text-primary dark:text-slate-200">
                       <span className="material-symbols-outlined text-[20px]">calendar_today</span>
                       {monthFilter}
                     </button>
                     {monthOpen && (
-                      <div className="absolute right-0 mt-sm w-48 bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <div className="absolute right-0 mt-sm w-48 bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
                         {["Todos los meses", ...uniqueMonths].map(m => (
-                          <div key={m} onClick={() => { setMonthFilter(m); setMonthOpen(false); }} className="px-md py-sm text-[13px] cursor-pointer hover:bg-surface-container-low dark:hover:bg-slate-800 text-on-surface dark:text-slate-200">{m}</div>
+                          <div key={m} onClick={() => { setMonthFilter(m); setMonthOpen(false); }} className="px-md py-sm text-[13px] cursor-pointer hover:bg-surface-container-low/10 backdrop-blur-md dark:hover:bg-slate-800 text-on-surface dark:text-slate-200">{m}</div>
                         ))}
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => setShowBatchModal(true)}
-                    className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-sm shadow-sm"
+                    className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-all flex items-center gap-sm shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[20px]">upload_file</span>
                     Subir Boleta
@@ -506,7 +496,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                 </div>
               </div>
 
-              <section className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+              <section className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="px-xl pt-lg border-b border-outline-variant dark:border-slate-800 flex items-center justify-between">
                   <div className="flex gap-xl overflow-x-auto">
                     <button onClick={() => setFilterTab("all")} className={`pb-md border-b-2 font-body-md text-body-md whitespace-nowrap transition-all ${filterTab === "all" ? "border-primary dark:border-sky-500 text-primary dark:text-slate-100 font-semibold" : "border-transparent text-on-surface-variant dark:text-slate-400 hover:text-primary dark:hover:text-slate-200"}`}>
@@ -520,17 +510,17 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                     </button>
                   </div>
                   <div className="pb-md relative">
-                    <button onClick={() => { setSortOpen(!sortOpen); setMonthOpen(false); }} className="material-symbols-outlined text-on-surface-variant dark:text-slate-400 hover:text-primary dark:hover:text-slate-200 p-xs rounded-md hover:bg-surface-container dark:hover:bg-slate-800 transition-colors">
+                    <button onClick={() => { setSortOpen(!sortOpen); setMonthOpen(false); }} className="material-symbols-outlined text-on-surface-variant dark:text-slate-400 hover:text-primary dark:hover:text-slate-200 p-xs rounded-md hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800 transition-colors">
                       filter_list
                     </button>
                     {sortOpen && (
-                      <div className="absolute right-0 mt-sm w-52 bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <div className="absolute right-0 mt-sm w-52 bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
                         {[
                           { key: "recent", label: "Más reciente" },
                           { key: "name-asc", label: "Nombre A-Z" },
                           { key: "name-desc", label: "Nombre Z-A" }
                         ].map(opt => (
-                          <div key={opt.key} onClick={() => { setSortOrder(opt.key as typeof sortOrder); setSortOpen(false); }} className={`px-md py-sm text-[13px] cursor-pointer hover:bg-surface-container-low dark:hover:bg-slate-800 ${sortOrder === opt.key ? "text-primary dark:text-sky-400 font-semibold" : "text-on-surface dark:text-slate-200"}`}>
+                          <div key={opt.key} onClick={() => { setSortOrder(opt.key as typeof sortOrder); setSortOpen(false); }} className={`px-md py-sm text-[13px] cursor-pointer hover:bg-surface-container-low/10 backdrop-blur-md dark:hover:bg-slate-800 ${sortOrder === opt.key ? "text-primary dark:text-sky-400 font-semibold" : "text-on-surface dark:text-slate-200"}`}>
                             {opt.label}
                           </div>
                         ))}
@@ -542,7 +532,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="bg-surface-container-low dark:bg-slate-800/50 text-left border-b border-outline-variant dark:border-slate-800">
+                      <tr className="bg-surface-container-low/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md text-left border-b border-outline-variant dark:border-slate-800">
                         <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider">Empleado</th>
                         <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider">ID de Boleta</th>
                         <th className="px-xl py-lg font-label-md text-label-md text-on-surface-variant dark:text-slate-300 uppercase tracking-wider">Estado</th>
@@ -553,7 +543,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                     <tbody className="divide-y divide-outline-variant dark:divide-slate-800">
                       {paginatedDocuments.length > 0 ? (
                         paginatedDocuments.map((doc) => (
-                          <tr key={doc.id} className="hover:bg-surface-container-low dark:hover:bg-slate-850/50 transition-colors">
+                          <tr key={doc.id} className="hover:bg-surface-container-low/10 backdrop-blur-md dark:hover:bg-slate-850/50 transition-colors">
                             <td className="px-xl py-md">
                               <div className="flex items-center gap-md">
                                 <div className="w-8 h-8 rounded-full bg-secondary-container dark:bg-slate-700 text-on-secondary-container dark:text-slate-200 flex items-center justify-center font-bold text-label-md overflow-hidden">
@@ -588,7 +578,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                               <div className="flex items-center justify-end gap-xs">
                                 <button
                                   onClick={() => handleDownloadPdf(doc.payslipId)}
-                                  className="material-symbols-outlined text-primary dark:text-sky-400 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
+                                  className="material-symbols-outlined text-primary dark:text-sky-400 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
                                   title="Descargar PDF"
                                 >
                                   picture_as_pdf
@@ -596,7 +586,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                                 {doc.status === "Signed" && (
                                   <button
                                     onClick={() => handleDownloadProof(doc.payslipId)}
-                                    className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 hover:bg-surface-container dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
+                                    className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800 rounded-lg p-sm transition-all text-[20px] active:scale-90"
                                     title="Descargar comprobante firmado"
                                   >
                                     download
@@ -618,22 +608,22 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                 </div>
 
                 {filteredDocuments.length > 0 && (
-                  <div className="px-xl py-lg bg-surface dark:bg-slate-900/80 border-t border-outline-variant dark:border-slate-800 flex flex-col sm:flex-row gap-md items-center justify-between">
+                  <div className="px-xl py-lg bg-surface/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border-t border-outline-variant dark:border-slate-800 flex flex-col sm:flex-row gap-md items-center justify-between">
                     <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400">
                       Mostrando {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredDocuments.length)} de {filteredDocuments.length} documentos
                     </p>
                     <div className="flex items-center gap-sm">
-                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant dark:border-slate-700 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container dark:hover:bg-slate-800 transition-colors disabled:opacity-30">
+                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant dark:border-slate-700 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800 transition-colors disabled:opacity-30">
                         <span className="material-symbols-outlined">chevron_left</span>
                       </button>
                       <div className="flex gap-xs">
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                          <button key={p} onClick={() => setCurrentPage(p)} className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold transition-colors ${currentPage === p ? "bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950" : "border border-outline-variant dark:border-slate-700 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container dark:hover:bg-slate-800"}`}>
+                          <button key={p} onClick={() => setCurrentPage(p)} className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold transition-colors ${currentPage === p ? "bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950" : "border border-outline-variant dark:border-slate-700 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800"}`}>
                             {p}
                           </button>
                         ))}
                       </div>
-                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant dark:border-slate-700 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container dark:hover:bg-slate-800 transition-colors disabled:opacity-30">
+                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant dark:border-slate-700 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-800 transition-colors disabled:opacity-30">
                         <span className="material-symbols-outlined">chevron_right</span>
                       </button>
                     </div>
@@ -656,7 +646,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                   { label: "Pendientes", value: countPending, icon: "schedule", color: "text-amber-600 dark:text-amber-400" },
                   { label: "Tasa de Firma", value: `${signRate}%`, icon: "trending_up", color: "text-primary dark:text-sky-400" }
                 ].map(card => (
-                  <div key={card.label} className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm">
+                  <div key={card.label} className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm">
                     <div className="flex items-center justify-between mb-sm">
                       <span className={`material-symbols-outlined ${card.color}`}>{card.icon}</span>
                     </div>
@@ -665,7 +655,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                   </div>
                 ))}
               </div>
-              <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-xl shadow-sm">
+              <div className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-xl shadow-sm">
                 <h3 className="font-headline-sm text-headline-sm text-primary dark:text-slate-100 mb-md">Boletas más recientes</h3>
                 <div className="space-y-sm">
                   {documents.slice(0, 4).map(doc => (
@@ -698,11 +688,11 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                   <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Directorio de empleados y su historial de firmas.</p>
                 </div>
                 <div className="flex gap-md items-center">
-                  <div className="flex items-center bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-full px-md py-sm w-56">
+                  <div className="flex items-center bg-surface-container/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-full px-md py-sm w-56">
                     <span className="material-symbols-outlined text-on-surface-variant dark:text-slate-400 mr-sm text-[18px]">search</span>
                     <input value={employeeSearch} onChange={(e) => setEmployeeSearch(e.target.value)} className="bg-transparent border-none focus:outline-none focus:ring-0 text-body-md font-body-md w-full dark:text-slate-200" placeholder="Buscar empleado..." type="text" />
                   </div>
-                  <button onClick={() => setShowEmployeeModal(true)} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-sm shadow-sm">
+                  <button onClick={() => setShowEmployeeModal(true)} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-all flex items-center gap-sm shadow-sm">
                     <span className="material-symbols-outlined text-[20px]">person_add</span>
                     Agregar Empleado
                   </button>
@@ -718,7 +708,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                   .map(emp => {
                     const stats = employeesList.find(e => e.email === emp.email);
                     return (
-                      <div key={emp.email} className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm">
+                      <div key={emp.email} className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm">
                         <div className="flex items-center gap-md mb-md">
                           <div className="w-11 h-11 rounded-full bg-secondary-container dark:bg-slate-700 text-on-secondary-container dark:text-slate-200 flex items-center justify-center font-bold">
                             {getInitials(emp.full_name)}
@@ -776,7 +766,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                 <h2 className="font-headline-md text-headline-md text-primary dark:text-slate-100">Reportes</h2>
                 <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Exporta el estado de firmas de todas las boletas de pago.</p>
               </div>
-              <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-xl shadow-sm mb-xl">
+              <div className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-xl shadow-sm mb-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-md">
                   <div>
                     <h3 className="font-headline-sm text-headline-sm text-primary dark:text-slate-100">Reporte de Boletas (CSV)</h3>
@@ -789,15 +779,15 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-md">
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm text-center">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm text-center">
                   <p className="text-2xl font-bold text-primary dark:text-slate-100">{documents.length}</p>
                   <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Boletas totales</p>
                 </div>
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm text-center">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm text-center">
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{countSigned}</p>
                   <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Firmadas</p>
                 </div>
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm text-center">
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-lg shadow-sm text-center">
                   <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{countPending}</p>
                   <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Pendientes</p>
                 </div>
@@ -810,7 +800,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       {/* Modal: Subir Boleta (PDF) */}
       {showBatchModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] flex items-center justify-center p-md">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 w-full max-w-md rounded-xl p-xl shadow-xl">
+          <div className="bg-surface-container-lowest/70 backdrop-blur-xl dark:bg-slate-900/70 border border-white/60 dark:border-slate-700/60 w-full max-w-md rounded-xl p-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
             <div className="flex items-center justify-between mb-lg">
               <div className="flex items-center gap-sm text-primary dark:text-slate-100">
                 <span className="material-symbols-outlined text-[24px]">upload_file</span>
@@ -826,7 +816,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
                   required
                   value={newPayslipEmail}
                   onChange={(e) => setNewPayslipEmail(e.target.value)}
-                  className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500"
+                  className="w-full bg-surface-container/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500"
                 >
                   <option value="">Selecciona un empleado</option>
                   {employees.map((emp) => (
@@ -838,13 +828,13 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
               <div className="grid grid-cols-2 gap-md">
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Período</label>
-                  <div className="w-full bg-surface-container-low dark:bg-slate-800/50 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
+                  <div className="w-full bg-surface-container-low/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
                     {currentPeriodInPeru()}
                   </div>
                 </div>
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Fecha de Emisión</label>
-                  <div className="w-full bg-surface-container-low dark:bg-slate-800/50 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
+                  <div className="w-full bg-surface-container-low/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
                     {todayInPeru()}
                   </div>
                 </div>
@@ -855,7 +845,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
 
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Archivo PDF de la Boleta *</label>
-                <label className="custom-dashed h-32 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low dark:hover:bg-slate-800 transition-colors relative">
+                <label className="custom-dashed h-32 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low/10 backdrop-blur-md dark:hover:bg-slate-800 transition-colors relative">
                   <input
                     type="file"
                     accept="application/pdf"
@@ -870,10 +860,10 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
               </div>
 
               <div className="pt-md flex items-center justify-end gap-md">
-                <button type="button" onClick={() => setShowBatchModal(false)} className="bg-surface dark:bg-slate-800 border border-outline-variant dark:border-slate-700 px-lg py-md rounded-lg font-body-md text-body-md text-primary dark:text-slate-200 hover:bg-surface-container dark:hover:bg-slate-700 transition-colors">
+                <button type="button" onClick={() => setShowBatchModal(false)} className="bg-surface/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 px-lg py-md rounded-lg font-body-md text-body-md text-primary dark:text-slate-200 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-700 transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" disabled={creatingBatch} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-colors shadow-sm disabled:opacity-50">
+                <button type="submit" disabled={creatingBatch} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-colors shadow-sm disabled:opacity-50">
                   {creatingBatch ? "Subiendo..." : "Subir Boleta"}
                 </button>
               </div>
@@ -885,7 +875,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       {/* Modal: Agregar Empleado */}
       {showEmployeeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] flex items-center justify-center p-md">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 w-full max-w-md rounded-xl p-xl shadow-xl">
+          <div className="bg-surface-container-lowest/70 backdrop-blur-xl dark:bg-slate-900/70 border border-white/60 dark:border-slate-700/60 w-full max-w-md rounded-xl p-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
             <div className="flex items-center justify-between mb-lg">
               <div className="flex items-center gap-sm text-primary dark:text-slate-100">
                 <span className="material-symbols-outlined text-[24px]">person_add</span>
@@ -897,7 +887,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
             <form onSubmit={handleCreateEmployee} className="space-y-md">
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Código de Empleado</label>
-                <div className="w-full bg-surface-container-low dark:bg-slate-800/50 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
+                <div className="w-full bg-surface-container-low/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md text-on-surface-variant dark:text-slate-400">
                   {nextEmployeeCode}
                 </div>
                 <p className="text-[11px] text-on-surface-variant dark:text-slate-500 mt-xs">
@@ -907,24 +897,24 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
 
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Nombre completo *</label>
-                <input type="text" required value={newEmployeeName} onChange={(e) => setNewEmployeeName(e.target.value)} placeholder="ej. María Fernanda Quispe" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
+                <input type="text" required value={newEmployeeName} onChange={(e) => setNewEmployeeName(e.target.value)} placeholder="ej. María Fernanda Quispe" className="w-full bg-surface-container/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
               </div>
 
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Correo Electrónico *</label>
-                <input type="email" required value={newEmployeeEmail} onChange={(e) => setNewEmployeeEmail(e.target.value)} placeholder="ej. empleado@empresa.pe" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
+                <input type="email" required value={newEmployeeEmail} onChange={(e) => setNewEmployeeEmail(e.target.value)} placeholder="ej. empleado@empresa.pe" className="w-full bg-surface-container/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
               </div>
 
               <div>
                 <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-300 mb-xs">Puesto</label>
-                <input type="text" value={newEmployeePosition} onChange={(e) => setNewEmployeePosition(e.target.value)} placeholder="ej. Asistente Administrativo" className="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
+                <input type="text" value={newEmployeePosition} onChange={(e) => setNewEmployeePosition(e.target.value)} placeholder="ej. Asistente Administrativo" className="w-full bg-surface-container/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 rounded-lg px-md py-sm font-body-md dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-sky-500/20 focus:border-primary dark:focus:border-sky-500" />
               </div>
 
               <div className="pt-md flex items-center justify-end gap-md">
-                <button type="button" onClick={() => setShowEmployeeModal(false)} className="bg-surface dark:bg-slate-800 border border-outline-variant dark:border-slate-700 px-lg py-md rounded-lg font-body-md text-body-md text-primary dark:text-slate-200 hover:bg-surface-container dark:hover:bg-slate-700 transition-colors">
+                <button type="button" onClick={() => setShowEmployeeModal(false)} className="bg-surface/10 backdrop-blur-md dark:bg-slate-800/10 backdrop-blur-md border border-outline-variant dark:border-slate-700 px-lg py-md rounded-lg font-body-md text-body-md text-primary dark:text-slate-200 hover:bg-surface-container/10 backdrop-blur-md dark:hover:bg-slate-700 transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" disabled={creatingEmployee} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-colors shadow-sm disabled:opacity-50">
+                <button type="submit" disabled={creatingEmployee} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-colors shadow-sm disabled:opacity-50">
                   {creatingEmployee ? "Creando..." : "Guardar"}
                 </button>
               </div>
@@ -933,33 +923,6 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
         </div>
       )}
 
-      {/* Modal de Ayuda */}
-      {helpOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] flex items-center justify-center p-md">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 w-full max-w-md rounded-xl p-xl shadow-xl">
-            <div className="flex items-center justify-between mb-lg">
-              <div className="flex items-center gap-sm text-primary dark:text-slate-100">
-                <span className="material-symbols-outlined text-[24px]">help</span>
-                <h3 className="font-headline-sm text-headline-sm font-bold">Ayuda</h3>
-              </div>
-              <button onClick={() => setHelpOpen(false)} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
-            </div>
-            <div className="space-y-md">
-              {[
-                { q: "¿Cómo firmo una boleta?", a: "El empleado inicia sesión con su correo y contraseña, y firma directamente desde su boleta pendiente." },
-                { q: "¿Cómo subo una boleta nueva?", a: "Ve a la pestaña Lotes de Boletas y usa el botón 'Subir Boleta'. Selecciona el empleado, completa los datos, y adjunta el PDF." },
-                { q: "¿Cómo agrego un empleado nuevo?", a: "Ve a la pestaña Empleados y usa el botón 'Agregar Empleado'. El sistema genera una contraseña temporal para comunicarle." },
-                { q: "¿Puedo exportar los datos?", a: "Sí, desde la pestaña Reportes puedes exportar un CSV con todos los registros." }
-              ].map(item => (
-                <div key={item.q}>
-                  <p className="font-body-md text-body-md font-semibold text-primary dark:text-slate-200">{item.q}</p>
-                  <p className="text-[13px] text-on-surface-variant dark:text-slate-400 mt-xs">{item.a}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -50,7 +50,7 @@ function EmployeeSignRoute() {
   if (notFound || !payslip) {
     return (
       <div className="min-h-screen bg-transparent text-on-surface flex items-center justify-center p-md">
-        <div className="max-w-sm text-center bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm">
+        <div className="max-w-sm text-center bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
           <span className="material-symbols-outlined text-[40px] text-outline opacity-40 mb-md">error</span>
           <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-xs">Boleta no encontrada</h2>
           <p className="text-[13px] text-on-surface-variant mb-lg">

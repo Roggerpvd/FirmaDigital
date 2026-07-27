@@ -10,7 +10,7 @@ function PayslipCard({ payslip, onDownload }: PayslipCardProps) {
   const isSigned = payslip.status === "Signed";
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm flex items-center justify-between gap-md">
+    <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-lg shadow-sm flex items-center justify-between gap-md">
       <div className="flex items-center gap-md min-w-0">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isSigned ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
           <span className="material-symbols-outlined text-[20px]">
