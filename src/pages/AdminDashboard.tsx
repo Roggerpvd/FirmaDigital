@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { PDFDocument } from "pdf-lib";
 import { logout } from "../api/auth";
 
 import {
@@ -115,11 +116,15 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
 
     setCreatingBatch(true);
     try {
+      const originalBuffer = await newPayslipFile.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(originalBuffer);
+      const compressedBytes = await pdfDoc.save({ useObjectStreams: true });
+
       const pdfBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
-        reader.readAsDataURL(newPayslipFile);
+        reader.readAsDataURL(new Blob([compressedBytes.buffer as ArrayBuffer], { type: "application/pdf" }));
       });
 
       const { payslipCode } = await uploadAdminPayslip({

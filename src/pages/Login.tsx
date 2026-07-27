@@ -85,7 +85,7 @@ function Login() {
           <p className="font-body-md text-body-md text-on-surface-variant mt-xs">Gestor de boletas de pago</p>
         </div>
 
-        <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
+        <div className="bg-surface-container-lowest/70 backdrop-blur-xl border border-white/60 rounded-xl p-xl shadow-2xl ring-1 ring-black/5">
           {step === "email" && (
             <form onSubmit={handleEmailSubmit} className="space-y-md">
               <div>
@@ -99,13 +99,13 @@ function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@correo.pe"
-                  className="w-full bg-surface-container/10 backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg px-md py-sm font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-primary/10 backdrop-blur-md border border-primary/30 text-primary px-lg py-md rounded-lg font-body-md text-body-md font-semibold hover:bg-primary/20 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full bg-primary/80 backdrop-blur-xl border border-primary/40 text-on-primary px-lg py-md rounded-lg font-body-md text-body-md font-semibold shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50"
               >
                 {isSubmitting ? "Verificando..." : "Continuar"}
               </button>
@@ -128,7 +128,7 @@ function Login() {
                     autoFocus
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-surface-container/10 backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                   <button
                     type="button"
@@ -149,7 +149,7 @@ function Login() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-primary/10 backdrop-blur-md border border-primary/30 text-primary px-lg py-md rounded-lg font-body-md text-body-md font-semibold hover:bg-primary/20 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full bg-primary/80 backdrop-blur-xl border border-primary/40 text-on-primary px-lg py-md rounded-lg font-body-md text-body-md font-semibold shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50"
               >
                 {isSubmitting ? "Ingresando..." : "Ingresar"}
               </button>
