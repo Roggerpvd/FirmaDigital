@@ -37,6 +37,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
   const [canvasIsEmpty, setCanvasIsEmpty] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [signedAt, setSignedAt] = useState<string>("");
+  const [documentHash, setDocumentHash] = useState<string>("");
   const [isSigned, setIsSigned] = useState(false);
   // Se incrementa tras firmar para forzar que el <iframe> recargue el PDF actualizado
   // (nuestro endpoint /view ya manda Cache-Control: no-store, esto solo evita que
@@ -174,6 +175,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       }
 
       setSignedAt(data.signedAt);
+      setDocumentHash(data.documentHash || "");
       setIsSigned(true);
       setRefreshKey((k) => k + 1);
       setStep("success");
@@ -435,6 +437,13 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                   <p className="text-[13px] text-on-surface-variant mb-lg">
                     Tu boleta {payslip.id} fue firmada y enviada correctamente el {signedAt}.
                   </p>
+                  {documentHash && (
+                    <p className="text-[11px] text-on-surface-variant/70 font-mono break-all mb-lg">
+                      Huella digital (SHA-256) del documento firmado, para verificar que no fue alterado:
+                      <br />
+                      {documentHash}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-sm">
                     {payslip.viewUrl && (
                       <a

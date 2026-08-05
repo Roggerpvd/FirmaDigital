@@ -7,6 +7,10 @@ export interface EmployeePayslip {
   issueDate: string;      // ej. "13 jul 2026"
   status: PayslipStatus;
   signedDate?: string;    // solo si status === "Signed"
+  // Datos de auditoría de la firma (solo presentes si status === "Signed").
+  documentHash?: string;  // SHA-256 del PDF firmado
+  signedIp?: string;
+  signedUserAgent?: string;
 }
 
 export interface EmployeeProfile {

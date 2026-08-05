@@ -44,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const result = await db.sql`
       SELECT p.payslip_code, p.period, p.net_amount, p.issue_date, p.status,
-             p.pdf_url, p.signed_pdf_url,
+             p.pdf_url, p.signed_pdf_url, p.signed_at,
+             p.document_hash, p.signed_ip, p.signed_user_agent,
              e.full_name, e.employee_code
       FROM payslips p
       JOIN employees e ON e.id = p.employee_id
@@ -69,6 +70,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // El frontend siempre debe cargarlo a través de este endpoint autenticado.
       hasPdf: Boolean(p.pdf_url || p.signed_pdf_url),
       viewUrl: (p.pdf_url || p.signed_pdf_url) ? `/api/payslips/${p.payslip_code}/view` : undefined,
+      // Datos de auditoría de la firma, solo presentes si status === "signed".
+      // Sirven para armar el comprobante y para poder verificar después que
+      // el PDF descargado no fue alterado (recalculando su SHA-256).
+      signedAt: p.signed_at ? new Date(p.signed_at).toISOString() : undefined,
+      documentHash: p.document_hash || undefined,
+      signedIp: p.signed_ip || undefined,
+      signedUserAgent: p.signed_user_agent || undefined,
     });
   } catch (error) {
     console.error("Error al obtener boleta:", error);

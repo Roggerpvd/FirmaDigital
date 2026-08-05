@@ -35,7 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await db.sql`
         SELECT 
           p.id, p.payslip_code, p.status, p.issue_date, p.signed_at,
-          e.full_name, e.email
+          p.period, p.document_hash, p.signed_ip, p.signed_user_agent,
+          e.full_name, e.email, e.employee_code
         FROM payslips p
         JOIN employees e ON e.id = p.employee_id
         ORDER BY p.issue_date DESC
@@ -50,6 +51,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? new Date(row.signed_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })
           : "—",
         email: row.email,
+        employeeCode: row.employee_code,
+        period: row.period,
+        signedAtIso: row.signed_at ? new Date(row.signed_at).toISOString() : null,
+        documentHash: row.document_hash,
+        signedIp: row.signed_ip,
+        signedUserAgent: row.signed_user_agent,
       }));
 
       return res.status(200).json({ documents });

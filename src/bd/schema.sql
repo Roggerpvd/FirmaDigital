@@ -30,6 +30,9 @@ CREATE TABLE payslips (
   pdf_url TEXT,                            -- PDF original subido por el admin (Vercel Blob)
   signed_pdf_url TEXT,                     -- PDF ya firmado, con la firma incrustada (Vercel Blob)
   signed_at TIMESTAMPTZ,
+  document_hash TEXT,                      -- SHA-256 del PDF firmado (detecta si se alteró después)
+  signed_ip TEXT,                          -- IP desde la que el empleado firmó
+  signed_user_agent TEXT,                  -- navegador/dispositivo usado al firmar
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

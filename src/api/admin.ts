@@ -5,6 +5,13 @@ export interface AdminDocument {
   status: "Signed" | "Pending";
   date: string;
   email: string;
+  // Datos adicionales para el reporte de auditoría (Excel).
+  employeeCode?: string;
+  period?: string;
+  signedAtIso?: string | null;
+  documentHash?: string | null;
+  signedIp?: string | null;
+  signedUserAgent?: string | null;
 }
 
 export interface AdminEmployee {

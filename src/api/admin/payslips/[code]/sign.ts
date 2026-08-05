@@ -1,8 +1,6 @@
-// api/payslips/[code]/sign.ts
-
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { put, get } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import { db } from "../../_lib/db.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
@@ -101,21 +99,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
     }
 
-    // En producción/preview, Vercel inyecta BLOB_READ_WRITE_TOKEN automáticamente al conectar el store.
-    // En desarrollo local (vercel dev) usamos BLOB_READ_WRITE_TOKEN_DEV como respaldo,
-    // porque las variables "Sensitive" no se pueden habilitar para el ambiente Development.
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
-    if (!blobToken) {
-      console.error("Falta BLOB_READ_WRITE_TOKEN en las variables de entorno del servidor");
-      return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
-    }
-
-    // Descarga el PDF original (privado: requiere el token para leerlo)
-    const originalBlob = await get(payslipRow.pdf_url, { access: "private", token: blobToken });
-    if (!originalBlob || originalBlob.statusCode !== 200) {
-      return res.status(502).json({ error: "No se pudo obtener el PDF original del storage" });
-    }
-    const pdfBytes = await new Response(originalBlob.stream).arrayBuffer();
+    // Descarga el PDF original
+    const pdfResponse = await fetch(payslipRow.pdf_url);
+    const pdfBytes = await pdfResponse.arrayBuffer();
     const pdfDoc = await PDFDocument.load(pdfBytes);
 
     // Convierte la firma (base64 PNG) en bytes e incrústala
@@ -169,10 +155,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const signedPdfBytes = await pdfDoc.save();
 
+    // En producción/preview, Vercel inyecta BLOB_READ_WRITE_TOKEN automáticamente al conectar el store.
+    // En desarrollo local (vercel dev) usamos BLOB_READ_WRITE_TOKEN_DEV como respaldo,
+    // porque las variables "Sensitive" no se pueden habilitar para el ambiente Development.
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
+    if (!blobToken) {
+      console.error("Falta BLOB_READ_WRITE_TOKEN en las variables de entorno del servidor");
+      return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
+    }
+
     const signedBlob = await put(`payslips/${code}-signed.pdf`, Buffer.from(signedPdfBytes), {
-      access: "private",
+      access: "public",
       contentType: "application/pdf",
-      addRandomSuffix: true,
+      allowOverwrite: true,
       token: blobToken,
     });
 
@@ -190,10 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         timeZone: "America/Lima",
         day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
       }),
-      // La boleta ahora se guarda en storage privado: el navegador no puede leer signedBlob.url
-      // directamente. En su lugar, el frontend debe cargar el PDF a través de nuestro propio
-      // endpoint autenticado (/view), que sí valida sesión y dueño antes de servirlo.
-      viewUrl: `/api/payslips/${code}/view`,
+      signedPdfUrl: signedBlob.url,
     });
   } catch (error) {
     console.error("Error al firmar boleta:", error);

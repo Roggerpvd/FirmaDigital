@@ -22,5 +22,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "api/payslips"]
+  "include": ["src", "api/payslips", "api/admin/payslips/payslips-action.ts", "api/employees"]
 }

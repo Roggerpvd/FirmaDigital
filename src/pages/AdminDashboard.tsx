@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PDFDocument } from "pdf-lib";
+import * as XLSX from "xlsx";
 import { logout } from "../api/auth";
 
 import {
@@ -281,19 +282,45 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
       emp.email.toLowerCase().includes(employeeSearch.toLowerCase())
   );
 
-  const handleExportCSV = () => {
-    const header = "Nombre,Correo,ID de Boleta,Estado,Fecha de Firma\n";
-    const rows = documents.map((d) => `${d.name},${d.email},${d.payslipId},${statusLabel(d.status)},${d.date}`).join("\n");
-    const csv = header + rows;
-    const element = document.createElement("a");
-    const file = new Blob([csv], { type: "text/csv" });
-    element.href = URL.createObjectURL(file);
+  const handleExportExcel = () => {
+    // Cada empleado es una fila; cada dato, su propia columna (nada de texto
+    // pegado con comas: XLSX.utils.json_to_sheet arma columnas reales de Excel).
+    const filas = documents.map((d) => ({
+      "Nombre": d.name,
+      "Código de empleado": d.employeeCode ?? "",
+      "Correo": d.email,
+      "Periodo": d.period ?? "",
+      "ID de boleta": d.payslipId,
+      "Estado": statusLabel(d.status),
+      "Fecha de firma": d.date,
+      "IP de firma": d.signedIp ?? "",
+      "Dispositivo / navegador": d.signedUserAgent ?? "",
+      "Hash del documento (SHA-256)": d.documentHash ?? "",
+    }));
+
+    const hoja = XLSX.utils.json_to_sheet(filas);
+
+    // Ancho de columna aproximado, para que no quede todo apretado al abrirlo.
+    hoja["!cols"] = [
+      { wch: 26 }, // Nombre
+      { wch: 16 }, // Código de empleado
+      { wch: 28 }, // Correo
+      { wch: 14 }, // Periodo
+      { wch: 16 }, // ID de boleta
+      { wch: 12 }, // Estado
+      { wch: 16 }, // Fecha de firma
+      { wch: 16 }, // IP de firma
+      { wch: 40 }, // Dispositivo / navegador
+      { wch: 66 }, // Hash del documento
+    ];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Boletas");
+
     const today = new Date().toISOString().split("T")[0];
-    element.download = `reporte_boletas_${today}.csv`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    setToast({ message: "Reporte CSV descargado.", type: "success" });
+    XLSX.writeFile(libro, `reporte_boletas_${today}.xlsx`);
+
+    setToast({ message: "Reporte Excel descargado.", type: "success" });
   };
 
   // Próximo código de empleado, solo para mostrarlo en el modal.
@@ -774,12 +801,12 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
               <div className="bg-surface-container-lowest/10 backdrop-blur-md dark:bg-slate-900/10 backdrop-blur-md border border-outline-variant dark:border-slate-800 rounded-xl p-xl shadow-sm mb-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-md">
                   <div>
-                    <h3 className="font-headline-sm text-headline-sm text-primary dark:text-slate-100">Reporte de Boletas (CSV)</h3>
-                    <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Incluye {documents.length} registros: nombre, correo, ID, estado y fecha de firma.</p>
+                    <h3 className="font-headline-sm text-headline-sm text-primary dark:text-slate-100">Reporte de Boletas (Excel)</h3>
+                    <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400 mt-xs">Incluye {documents.length} registros, uno por empleado: nombre, código, correo, periodo, estado, IP, dispositivo y hash de firma.</p>
                   </div>
-                  <button onClick={handleExportCSV} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-sm shadow-sm">
+                  <button onClick={handleExportExcel} className="bg-primary dark:bg-sky-500 text-on-primary dark:text-slate-950 px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-sm shadow-sm">
                     <span className="material-symbols-outlined text-[20px]">file_download</span>
-                    Exportar CSV
+                    Exportar Excel
                   </button>
                 </div>
               </div>
