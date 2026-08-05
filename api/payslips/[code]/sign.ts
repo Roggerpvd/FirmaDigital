@@ -1,7 +1,19 @@
+// api/payslips/[code]/sign.ts
+
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { put } from "@vercel/blob";
+import { put, get } from "@vercel/blob";
+import { createHash } from "node:crypto";
 import { db } from "../../_lib/db.js";
+
+// IP real del firmante. En Vercel, la conexión llega desde su proxy, así que
+// la IP del cliente viaja en este header (puede traer varias si hay más
+// proxies de por medio; la primera es la del navegador del empleado).
+function getClientIp(req: VercelRequest): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return (raw?.split(",")[0].trim()) || req.socket?.remoteAddress || "desconocida";
+}
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
@@ -99,9 +111,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
     }
 
-    // Descarga el PDF original
-    const pdfResponse = await fetch(payslipRow.pdf_url);
-    const pdfBytes = await pdfResponse.arrayBuffer();
+    // En producción/preview, Vercel inyecta BLOB_READ_WRITE_TOKEN automáticamente al conectar el store.
+    // En desarrollo local (vercel dev) usamos BLOB_READ_WRITE_TOKEN_DEV como respaldo,
+    // porque las variables "Sensitive" no se pueden habilitar para el ambiente Development.
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
+    if (!blobToken) {
+      console.error("Falta BLOB_READ_WRITE_TOKEN en las variables de entorno del servidor");
+      return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
+    }
+
+    // Descarga el PDF original (privado: requiere el token para leerlo)
+    const originalBlob = await get(payslipRow.pdf_url, { access: "private", token: blobToken });
+    if (!originalBlob || originalBlob.statusCode !== 200) {
+      return res.status(502).json({ error: "No se pudo obtener el PDF original del storage" });
+    }
+    const pdfBytes = await new Response(originalBlob.stream).arrayBuffer();
     const pdfDoc = await PDFDocument.load(pdfBytes);
 
     // Convierte la firma (base64 PNG) en bytes e incrústala
@@ -152,22 +176,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       font: textFont,
       color: textColor,
     });
+    textY -= SIGNATURE_TEXT_LINE_HEIGHT;
+    lastPage.drawText(`IP: ${getClientIp(req)}`, {
+      x: SIGNATURE_X,
+      y: textY,
+      size: SIGNATURE_TEXT_SIZE,
+      font: textFont,
+      color: textColor,
+    });
 
+    // Hash del PDF final (con la firma ya incrustada). Esto es lo que da valor
+    // probatorio real: cualquier cambio posterior al PDF firmado (aunque sea
+    // un byte) produce un hash distinto, así que sirve para detectar alteraciones.
+    // No reemplaza a una firma digital PKI, pero es mucho más que una simple imagen.
     const signedPdfBytes = await pdfDoc.save();
-
-    // En producción/preview, Vercel inyecta BLOB_READ_WRITE_TOKEN automáticamente al conectar el store.
-    // En desarrollo local (vercel dev) usamos BLOB_READ_WRITE_TOKEN_DEV como respaldo,
-    // porque las variables "Sensitive" no se pueden habilitar para el ambiente Development.
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
-    if (!blobToken) {
-      console.error("Falta BLOB_READ_WRITE_TOKEN en las variables de entorno del servidor");
-      return res.status(500).json({ error: "Configuración de storage incompleta. Contacta al administrador." });
-    }
+    const documentHash = createHash("sha256").update(signedPdfBytes).digest("hex");
+    const signerIp = getClientIp(req);
+    const signerUserAgent = (req.headers["user-agent"] as string) || "desconocido";
 
     const signedBlob = await put(`payslips/${code}-signed.pdf`, Buffer.from(signedPdfBytes), {
-      access: "public",
+      access: "private",
       contentType: "application/pdf",
-      allowOverwrite: true,
+      addRandomSuffix: true,
       token: blobToken,
     });
 
@@ -175,7 +205,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await db.sql`
       UPDATE payslips 
-      SET status = 'signed', signature_data_url = ${signatureDataUrl}, signed_at = ${signedAt.toISOString()}, signed_pdf_url = ${signedBlob.url}
+      SET status = 'signed', signature_data_url = ${signatureDataUrl}, signed_at = ${signedAt.toISOString()},
+          signed_pdf_url = ${signedBlob.url}, document_hash = ${documentHash},
+          signed_ip = ${signerIp}, signed_user_agent = ${signerUserAgent}
       WHERE id = ${payslipRow.id}
     `;
 
@@ -185,7 +217,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         timeZone: "America/Lima",
         day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
       }),
-      signedPdfUrl: signedBlob.url,
+      documentHash,
+      // La boleta ahora se guarda en storage privado: el navegador no puede leer signedBlob.url
+      // directamente. En su lugar, el frontend debe cargar el PDF a través de nuestro propio
+      // endpoint autenticado (/view), que sí valida sesión y dueño antes de servirlo.
+      viewUrl: `/api/payslips/${code}/view`,
     });
   } catch (error) {
     console.error("Error al firmar boleta:", error);
