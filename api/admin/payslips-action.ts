@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { put, get } from "@vercel/blob";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { db } from "../_lib/db.js";
+import { todayInPeru } from "../_lib/peruDate.js";
 import { EMPLOYER_SIGNATURE_BASE64 } from "../_lib/employerSignature.js";
 import {
   EMPLOYER_SIGNATURE_X,
@@ -99,6 +100,10 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
 
   if (!issueDate || !ISSUE_DATE_REGEX.test(issueDate)) {
     return res.status(400).json({ error: "Fecha de emisión inválida. Formato esperado: YYYY-MM-DD" });
+  }
+
+  if (issueDate > todayInPeru()) {
+    return res.status(400).json({ error: "La fecha de emisión no puede ser posterior al día de hoy" });
   }
 
   const employeeResult = await db.sql`

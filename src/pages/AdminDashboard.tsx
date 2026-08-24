@@ -871,6 +871,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  <input
  type="date"
  required
+ max={todayInPeru()}
  value={newPayslipIssueDate}
  onChange={(e) => setNewPayslipIssueDate(e.target.value)}
  className="w-full bg-surface-container/10 backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
