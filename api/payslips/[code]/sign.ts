@@ -5,6 +5,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { put, get } from "@vercel/blob";
 import { createHash } from "node:crypto";
 import { db } from "../../_lib/db.js";
+import { SIGNATURE_X, SIGNATURE_Y, SIGNATURE_WIDTH, SIGNATURE_HEIGHT, SIGNATURE_TEXT_SIZE, SIGNATURE_TEXT_GAP, SIGNATURE_TEXT_LINE_HEIGHT } from "../../_lib/signaturePlacement.js";
 
 // IP real del firmante. En Vercel, la conexión llega desde su proxy, así que
 // la IP del cliente viaja en este header (puede traer varias si hay más
@@ -21,19 +22,6 @@ function getCookie(req: VercelRequest, name: string): string | null {
   const match = cookies.split("; ").find((c) => c.startsWith(`${name}=`));
   return match ? match.split("=")[1] : null;
 }
-
-// Coordenadas fijas donde va la firma dentro del PDF.
-// Ajusta estos valores según el diseño real de tu boleta.
-// En PDF, el origen (0,0) está en la esquina INFERIOR izquierda de la página.
-const SIGNATURE_X = 360;
-const SIGNATURE_Y = 100;
-const SIGNATURE_WIDTH = 180;
-const SIGNATURE_HEIGHT = 70;
-
-// Texto debajo de la firma: nombre del empleado + fecha y hora de firma.
-const SIGNATURE_TEXT_SIZE = 8;
-const SIGNATURE_TEXT_GAP = 12; // separación entre el borde inferior de la firma y la primera línea de texto
-const SIGNATURE_TEXT_LINE_HEIGHT = 10;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -170,14 +158,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     lastPage.drawText(`Firmado el ${signedDateTimeLabel}`, {
-      x: SIGNATURE_X,
-      y: textY,
-      size: SIGNATURE_TEXT_SIZE,
-      font: textFont,
-      color: textColor,
-    });
-    textY -= SIGNATURE_TEXT_LINE_HEIGHT;
-    lastPage.drawText(`IP: ${getClientIp(req)}`, {
       x: SIGNATURE_X,
       y: textY,
       size: SIGNATURE_TEXT_SIZE,

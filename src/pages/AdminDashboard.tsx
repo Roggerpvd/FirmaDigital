@@ -40,6 +40,8 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  const [showBatchModal, setShowBatchModal] = useState(false);
  const [newPayslipEmail, setNewPayslipEmail] = useState("");
  const [newPayslipFile, setNewPayslipFile] = useState<File | null>(null);
+ const [newPayslipPeriod, setNewPayslipPeriod] = useState("");
+ const [newPayslipIssueDate, setNewPayslipIssueDate] = useState("");
  const [creatingBatch, setCreatingBatch] = useState(false);
 
  // Modal: Agregar Empleado
@@ -105,6 +107,10 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  setToast({ message:"Selecciona un empleado y adjunta el PDF.", type:"info" });
  return;
  }
+ if (!newPayslipPeriod.trim() || !newPayslipIssueDate) {
+ setToast({ message:"Ingresa el período y la fecha de emisión.", type:"info" });
+ return;
+ }
 
  setCreatingBatch(true);
  try {
@@ -122,12 +128,16 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  const { payslipCode } = await uploadAdminPayslip({
  employeeEmail: newPayslipEmail,
  pdfBase64,
+ period: newPayslipPeriod.trim(),
+ issueDate: newPayslipIssueDate,
  });
 
  setToast({ message:`Boleta ${payslipCode} subida correctamente.`, type:"success" });
  setShowBatchModal(false);
  setNewPayslipEmail("");
  setNewPayslipFile(null);
+ setNewPayslipPeriod("");
+ setNewPayslipIssueDate("");
  loadData();
  } catch (err: any) {
  setToast({ message: err.message ||"No se pudo subir la boleta.", type:"error" });
@@ -502,7 +512,11 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  )}
  </div>
  <button
- onClick={() => setShowBatchModal(true)}
+ onClick={() => {
+ setNewPayslipPeriod(currentPeriodInPeru());
+ setNewPayslipIssueDate(todayInPeru());
+ setShowBatchModal(true);
+ }}
  className="bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-all flex items-center gap-sm shadow-sm"
  >
  <span className="material-symbols-outlined text-[20px]">upload_file</span>
@@ -842,20 +856,29 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
 
  <div className="grid grid-cols-2 gap-md">
  <div>
- <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant mb-xs">Período</label>
- <div className="w-full bg-surface-container-low/10 backdrop-blur-md backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm font-body-md text-on-surface-variant">
- {currentPeriodInPeru()}
- </div>
+ <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant mb-xs">Período *</label>
+ <input
+ type="text"
+ required
+ placeholder="Ej. Julio 2026"
+ value={newPayslipPeriod}
+ onChange={(e) => setNewPayslipPeriod(e.target.value)}
+ className="w-full bg-surface-container/10 backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+ />
  </div>
  <div>
- <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant mb-xs">Fecha de Emisión</label>
- <div className="w-full bg-surface-container-low/10 backdrop-blur-md backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm font-body-md text-on-surface-variant">
- {todayInPeru()}
- </div>
+ <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant mb-xs">Fecha de Emisión *</label>
+ <input
+ type="date"
+ required
+ value={newPayslipIssueDate}
+ onChange={(e) => setNewPayslipIssueDate(e.target.value)}
+ className="w-full bg-surface-container/10 backdrop-blur-md border border-outline-variant rounded-lg px-md py-sm font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+ />
  </div>
  </div>
  <p className="text-[11px] text-on-surface-variant -mt-sm">
- El período y la fecha se asignan automáticamente con la fecha de hoy (hora Perú). El ID de la boleta se genera solo, en orden, para el empleado seleccionado.
+ El período y la fecha se precargan con la fecha de hoy (hora Perú), pero puedes editarlos manualmente. El ID de la boleta se genera solo, en orden, para el empleado seleccionado.
  </p>
 
  <div>

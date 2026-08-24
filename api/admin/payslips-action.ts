@@ -1,7 +1,59 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { put, get } from "@vercel/blob";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { db } from "../_lib/db.js";
-import { todayInPeru, currentPeriodInPeru } from "../_lib/peruDate.js";
+import { EMPLOYER_SIGNATURE_BASE64 } from "../_lib/employerSignature.js";
+import {
+  EMPLOYER_SIGNATURE_X,
+  EMPLOYER_SIGNATURE_Y,
+  EMPLOYER_SIGNATURE_WIDTH,
+  EMPLOYER_SIGNATURE_HEIGHT,
+  SIGNATURE_TEXT_SIZE,
+  SIGNATURE_TEXT_GAP,
+  SIGNATURE_TEXT_LINE_HEIGHT,
+  EMPLOYER_SIGNATURE_LABEL_LINES,
+} from "../_lib/signaturePlacement.js";
+
+// Toma el PDF original (bytes) y, si hay una firma de empleador configurada
+// (ver api/_lib/employerSignature.ts), la incrusta en la última página junto
+// con su etiqueta de texto. Si todavía no se configuró ninguna firma, devuelve
+// el PDF sin cambios (el sistema sigue funcionando normal).
+async function withEmployerSignature(pdfBuffer: Buffer): Promise<Buffer> {
+  if (!EMPLOYER_SIGNATURE_BASE64) {
+    return pdfBuffer;
+  }
+
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const employerSignatureBytes = Buffer.from(EMPLOYER_SIGNATURE_BASE64, "base64");
+  const employerSignatureImage = await pdfDoc.embedPng(employerSignatureBytes);
+
+  const pages = pdfDoc.getPages();
+  const lastPage = pages[pages.length - 1];
+
+  lastPage.drawImage(employerSignatureImage, {
+    x: EMPLOYER_SIGNATURE_X,
+    y: EMPLOYER_SIGNATURE_Y,
+    width: EMPLOYER_SIGNATURE_WIDTH,
+    height: EMPLOYER_SIGNATURE_HEIGHT,
+  });
+
+  const textFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const textColor = rgb(0.2, 0.2, 0.2);
+  let textY = EMPLOYER_SIGNATURE_Y - SIGNATURE_TEXT_GAP;
+
+  for (const line of EMPLOYER_SIGNATURE_LABEL_LINES) {
+    lastPage.drawText(line, {
+      x: EMPLOYER_SIGNATURE_X,
+      y: textY,
+      size: SIGNATURE_TEXT_SIZE,
+      font: textFont,
+      color: textColor,
+    });
+    textY -= SIGNATURE_TEXT_LINE_HEIGHT;
+  }
+
+  return Buffer.from(await pdfDoc.save());
+}
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
@@ -26,14 +78,27 @@ async function requireAdmin(req: VercelRequest): Promise<boolean> {
   return true;
 }
 
+// Formato esperado para la fecha de emisión: YYYY-MM-DD (igual al de un <input type="date">).
+const ISSUE_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 async function handleUpload(req: VercelRequest, res: VercelResponse) {
-  const { employeeEmail, pdfBase64 } = (req.body ?? {}) as {
+  const { employeeEmail, pdfBase64, period, issueDate } = (req.body ?? {}) as {
     employeeEmail?: string;
     pdfBase64?: string;
+    period?: string;
+    issueDate?: string;
   };
 
   if (!employeeEmail || !pdfBase64) {
     return res.status(400).json({ error: "Falta el empleado o el archivo PDF" });
+  }
+
+  if (!period || !period.trim()) {
+    return res.status(400).json({ error: "Falta el período" });
+  }
+
+  if (!issueDate || !ISSUE_DATE_REGEX.test(issueDate)) {
+    return res.status(400).json({ error: "Fecha de emisión inválida. Formato esperado: YYYY-MM-DD" });
   }
 
   const employeeResult = await db.sql`
@@ -54,11 +119,10 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
   const nextSeq = countResult.rows[0].total + 1;
   const payslipCode = `${employeeCode}-${String(nextSeq).padStart(3, "0")}`;
 
-  const period = currentPeriodInPeru();
-  const issueDate = todayInPeru();
-
   const base64Data = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
-  const pdfBuffer = Buffer.from(base64Data, "base64");
+  const rawPdfBuffer = Buffer.from(base64Data, "base64");
+  // Incrusta la firma del empleador (si está configurada) antes de guardar el PDF.
+  const pdfBuffer = await withEmployerSignature(rawPdfBuffer);
 
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN_DEV;
 

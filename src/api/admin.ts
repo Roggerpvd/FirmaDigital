@@ -96,6 +96,8 @@ export async function createAdminPayslip(payload: {
 export async function uploadAdminPayslip(payload: {
   employeeEmail: string;
   pdfBase64: string;
+  period: string;
+  issueDate: string;
 }): Promise<{ payslipCode: string; period: string; issueDate: string }> {
   const res = await fetch("/api/admin/payslips-action", {
     method: "POST",
