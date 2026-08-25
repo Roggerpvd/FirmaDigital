@@ -152,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       y: SIGNATURE_Y + SIGNATURE_HEIGHT + 6,
       size: SIGNATURE_TEXT_SIZE,
       font: boldFont,
-      color: rgb(0.1, 0.45, 0.1),
+      color: textColor,
     });
 
     let textY = SIGNATURE_Y - SIGNATURE_TEXT_GAP;
