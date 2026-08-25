@@ -143,7 +143,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }).format(signedAtForPdf);
 
     const textFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const textColor = rgb(0.2, 0.2, 0.2);
+
+    // Sello de texto "FIRMADO CONFORME" justo encima de la firma del empleado.
+    lastPage.drawText("FIRMADO CONFORME", {
+      x: SIGNATURE_X,
+      y: SIGNATURE_Y + SIGNATURE_HEIGHT + 6,
+      size: SIGNATURE_TEXT_SIZE,
+      font: boldFont,
+      color: rgb(0.1, 0.45, 0.1),
+    });
+
     let textY = SIGNATURE_Y - SIGNATURE_TEXT_GAP;
 
     if (employeeFullName) {
