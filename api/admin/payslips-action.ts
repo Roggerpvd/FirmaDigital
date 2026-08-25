@@ -31,11 +31,25 @@ async function withEmployerSignature(pdfBuffer: Buffer): Promise<Buffer> {
   const pages = pdfDoc.getPages();
   const lastPage = pages[pages.length - 1];
 
+  // Escala la imagen respetando su proporción real (evita que se vea
+  // "achatada" o estirada) para que quepa dentro del recuadro de firma,
+  // y la centra en ese espacio.
+  const naturalWidth = employerSignatureImage.width;
+  const naturalHeight = employerSignatureImage.height;
+  const scale = Math.min(
+    EMPLOYER_SIGNATURE_WIDTH / naturalWidth,
+    EMPLOYER_SIGNATURE_HEIGHT / naturalHeight
+  );
+  const drawWidth = naturalWidth * scale;
+  const drawHeight = naturalHeight * scale;
+  const drawX = EMPLOYER_SIGNATURE_X + (EMPLOYER_SIGNATURE_WIDTH - drawWidth) / 2;
+  const drawY = EMPLOYER_SIGNATURE_Y + (EMPLOYER_SIGNATURE_HEIGHT - drawHeight) / 2;
+
   lastPage.drawImage(employerSignatureImage, {
-    x: EMPLOYER_SIGNATURE_X,
-    y: EMPLOYER_SIGNATURE_Y,
-    width: EMPLOYER_SIGNATURE_WIDTH,
-    height: EMPLOYER_SIGNATURE_HEIGHT,
+    x: drawX,
+    y: drawY,
+    width: drawWidth,
+    height: drawHeight,
   });
 
   const textFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
