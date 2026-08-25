@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       employeeCode: p.employee_code,
       period: p.period,
       netAmount: `S/ ${Number(p.net_amount).toFixed(2)}`,
-      issueDate: new Date(p.issue_date).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }),
+      issueDate: new Date(p.issue_date).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }),
       status: p.status,
       // El PDF vive en storage privado: no exponemos su URL directamente.
       // El frontend siempre debe cargarlo a través de este endpoint autenticado.

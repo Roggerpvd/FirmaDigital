@@ -50,10 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       id: p.payslip_code,
       period: p.period,
       netAmount: `S/ ${Number(p.net_amount).toFixed(2)}`,
-      issueDate: new Date(p.issue_date).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }),
+      issueDate: new Date(p.issue_date).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }),
       status: p.status === "signed" ? "Signed" : "Pending",
       signedDate: p.signed_at
-        ? new Date(p.signed_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })
+        ? new Date(p.signed_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Lima" })
         : undefined,
     }));
 

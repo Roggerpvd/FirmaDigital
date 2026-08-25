@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         payslipId: row.payslip_code,
         status: row.status === "signed" ? "Signed" : "Pending",
         date: row.signed_at
-          ? new Date(row.signed_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })
+          ? new Date(row.signed_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Lima" })
           : "—",
         email: row.email,
         employeeCode: row.employee_code,
