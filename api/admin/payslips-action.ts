@@ -222,12 +222,12 @@ async function handleDownload(req: VercelRequest, res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const isAdmin = await requireAdmin(req);
-  if (!isAdmin) {
-    return res.status(403).json({ error: "Acceso solo para administradores" });
-  }
-
   try {
+    const isAdmin = await requireAdmin(req);
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Acceso solo para administradores" });
+    }
+
     if (req.method === "POST") {
       return await handleUpload(req, res);
     }
@@ -243,6 +243,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (String(error?.message ?? "").includes("credentials")) {
       return res.status(500).json({ error: "Error de credenciales de storage" });
     }
-    return res.status(500).json({ error: "Error interno del servidor" });
+    return res.status(500).json({ error: "Error interno del servidor", detail: String(error?.message ?? error) });
   }
 }
