@@ -11,7 +11,7 @@ export const SIGNATURE_WIDTH = 180;
 export const SIGNATURE_HEIGHT = 70;
 
 // Firma del empleador (izquierda). Se coloca al momento de subir la boleta
-// (payslips-action.ts), pegada al margen izquierdo, a la misma altura (SIGNATURE_Y)
+// (payslips.ts), pegada al margen izquierdo, a la misma altura (SIGNATURE_Y)
 // que la firma del empleado.
 export const EMPLOYER_SIGNATURE_X = 40;
 export const EMPLOYER_SIGNATURE_Y = SIGNATURE_Y;

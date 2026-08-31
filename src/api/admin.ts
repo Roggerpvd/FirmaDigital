@@ -75,31 +75,13 @@ export async function resetAdminEmployeePassword(
   return data;
 }
 
-export async function createAdminPayslip(payload: {
-  employeeEmail: string;
-  payslipCode: string;
-  period: string;
-  netAmount: number;
-  issueDate: string;
-  status: "pending" | "signed";
-}): Promise<void> {
-  const res = await fetch("/api/admin/payslips", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "No se pudo crear la boleta");
-}
-
 export async function uploadAdminPayslip(payload: {
   employeeEmail: string;
   pdfBase64: string;
   period: string;
   issueDate: string;
 }): Promise<{ payslipCode: string; period: string; issueDate: string }> {
-  const res = await fetch("/api/admin/payslips-action", {
+  const res = await fetch("/api/admin/payslips", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -112,7 +94,7 @@ export async function uploadAdminPayslip(payload: {
 
 export const downloadAdminPayslip = async (payslipCode: string, signed = false) => {
   const response = await fetch(
-    `/api/admin/payslips-action?payslipCode=${encodeURIComponent(payslipCode)}${signed ? "&signed=true" : ""}`,
+    `/api/admin/payslips?payslipCode=${encodeURIComponent(payslipCode)}${signed ? "&signed=true" : ""}`,
     { credentials: "include" }
   );
 
