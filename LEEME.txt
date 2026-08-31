@@ -1,0 +1,62 @@
+# Blindaje Digital — Archivos entregados
+
+Estos son SOLO los archivos nuevos o modificados. Cópialos sobre tu proyecto
+FirmaDigital respetando las mismas rutas (todo bajo `api/` y `src/` va donde
+ya lo tienes).
+
+## 1. Corre las migraciones SQL primero (una sola vez, en este orden)
+
+    src/bd/migration_otp_firma.sql
+    src/bd/migration_forzar_cambio_password.sql
+
+## 2. Copia los archivos de backend (api/)
+
+    api/_lib/otp.ts                              <- nuevo
+    api/payslips/[code]/request-otp.ts            <- nuevo
+    api/payslips/[code]/sign.ts                   <- reemplaza el tuyo
+    api/auth/me.ts                                <- reemplaza el tuyo
+    api/auth/password.ts                          <- reemplaza el tuyo
+    api/admin/employees.ts                        <- reemplaza el tuyo
+
+## 3. Copia los archivos de frontend (src/)
+
+    src/api/otp.ts                                <- nuevo
+    src/pages/EmployeeSignPortal.tsx               <- reemplaza el tuyo
+    src/pages/AppGate.tsx                          <- reemplaza el tuyo
+    src/pages/ForcePasswordChange.tsx              <- nuevo
+    src/types/session.ts                           <- reemplaza el tuyo
+
+## 4. Variables de entorno
+
+Ya tenías RESEND_API_KEY configurado, no hace falta nada nuevo.
+Opcional: si tienes un dominio verificado en Resend, agrega en .env.local:
+
+    RESEND_FROM_EMAIL="Boletas <boletas@tudominio.pe>"
+
+Si no la agregas, se usa el remitente sandbox de Resend (onboarding@resend.dev),
+que funciona pero es más propenso a caer en spam.
+
+## Qué hace cada cosa
+
+- **OTP por correo (Paso 2):** al firmar, se pide un código de 6 dígitos
+  enviado al correo del empleado. Expira en 5 minutos, máximo 5 intentos,
+  se guarda solo el hash (nunca el código en texto plano).
+
+- **Bloqueo de no-repudio (Paso 1):** cuando el admin crea un empleado,
+  queda marcado `requires_password_change = true`. Mientras ese flag esté
+  activo, el backend rechaza tanto pedir el OTP como firmar — no solo la
+  pantalla lo bloquea, el servidor también, así que no se puede saltar
+  desde la consola del navegador. Se levanta automáticamente cuando el
+  empleado cambia su contraseña.
+
+## Ya estaba hecho en tu proyecto (no se tocó)
+
+- Hash SHA-256 del PDF firmado (Paso 3)
+- Log de auditoría: IP, user-agent, fecha del servidor (Paso 4)
+- PDFs privados servidos vía endpoint autenticado (Paso 5)
+
+## Pendiente (fuera de código)
+
+- Paso 6: adenda física de autorización, firmada en papel por cada
+  trabajador, autorizando el uso de usuario/contraseña + OTP como firma
+  oficial.

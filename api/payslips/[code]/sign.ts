@@ -6,6 +6,7 @@ import { put, get } from "@vercel/blob";
 import { createHash } from "node:crypto";
 import { db } from "../../_lib/db.js";
 import { SIGNATURE_X, SIGNATURE_Y, SIGNATURE_WIDTH, SIGNATURE_HEIGHT, SIGNATURE_TEXT_SIZE, SIGNATURE_TEXT_GAP, SIGNATURE_TEXT_LINE_HEIGHT } from "../../_lib/signaturePlacement.js";
+import { hashOtpCode, OTP_MAX_ATTEMPTS } from "../../_lib/otp.js";
 
 // IP real del firmante. En Vercel, la conexión llega desde su proxy, así que
 // la IP del cliente viaja en este header (puede traer varias si hay más
@@ -53,10 +54,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { code } = req.query as { code?: string };
-    const { signatureDataUrl: providedSignature } = (req.body ?? {}) as { signatureDataUrl?: string };
+    const { signatureDataUrl: providedSignature, otpCode } = (req.body ?? {}) as {
+      signatureDataUrl?: string;
+      otpCode?: string;
+    };
 
     if (!code) {
       return res.status(400).json({ error: "Código de boleta requerido" });
+    }
+
+    if (!otpCode || typeof otpCode !== "string") {
+      return res.status(400).json({ error: "Falta el código de verificación (OTP)" });
     }
 
     const checkResult = await db.sql`
@@ -77,6 +85,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!payslipRow.pdf_url) {
       return res.status(400).json({ error: "Esta boleta no tiene un PDF asociado" });
     }
+
+    // Bloqueo de no-repudio (segunda comprobación, por si se intenta firmar
+    // saltándose el paso de solicitar el OTP): mientras la contraseña siga
+    // siendo la temporal creada por el admin, no se puede firmar.
+    const employeeFlagResult = await db.sql`
+      SELECT requires_password_change FROM employees WHERE id = ${session.employee_id}
+    `;
+    if (employeeFlagResult.rows[0]?.requires_password_change) {
+      return res.status(403).json({
+        error: "Debes cambiar tu contraseña temporal antes de poder firmar boletas",
+        requiresPasswordChange: true,
+      });
+    }
+
+    // Segundo factor de autenticación: valida el código OTP enviado por correo.
+    // Toma siempre el código más reciente para esta boleta; los anteriores quedan inválidos.
+    const otpResult = await db.sql`
+      SELECT id, code_hash, expires_at, attempts, used_at FROM signature_otp_codes
+      WHERE payslip_id = ${payslipRow.id}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if (otpResult.rows.length === 0) {
+      return res.status(400).json({ error: "No se ha solicitado un código de verificación. Pide uno primero." });
+    }
+
+    const otpRow = otpResult.rows[0];
+
+    if (otpRow.used_at) {
+      return res.status(400).json({ error: "Este código ya fue usado. Solicita uno nuevo." });
+    }
+
+    if (new Date(otpRow.expires_at) < new Date()) {
+      return res.status(400).json({ error: "El código expiró. Solicita uno nuevo." });
+    }
+
+    if (otpRow.attempts >= OTP_MAX_ATTEMPTS) {
+      return res.status(429).json({ error: "Demasiados intentos con este código. Solicita uno nuevo." });
+    }
+
+    const codeMatches = hashOtpCode(otpCode.trim()) === otpRow.code_hash;
+
+    if (!codeMatches) {
+      await db.sql`
+        UPDATE signature_otp_codes SET attempts = attempts + 1 WHERE id = ${otpRow.id}
+      `;
+      return res.status(401).json({ error: "El código ingresado es incorrecto" });
+    }
+
+    await db.sql`
+      UPDATE signature_otp_codes SET used_at = now() WHERE id = ${otpRow.id}
+    `;
 
     // Determina qué firma usar: la enviada ahora, o la firma maestra guardada.
     // De paso traemos el nombre del empleado, para escribirlo debajo de la firma.

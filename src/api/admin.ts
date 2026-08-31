@@ -40,7 +40,7 @@ export async function createAdminEmployee(payload: {
   fullName: string;
   email: string;
   position?: string;
-}): Promise<{ employee: AdminEmployee; temporaryPassword: string }> {
+}): Promise<{ employee: AdminEmployee; temporaryPassword: string; emailSent: boolean; emailError?: string }> {
   const res = await fetch("/api/admin/employees", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ export async function deleteAdminEmployee(employeeCode: string): Promise<void> {
 
 export async function resetAdminEmployeePassword(
   employeeCode: string
-): Promise<{ email: string; fullName: string; temporaryPassword: string }> {
+): Promise<{ email: string; fullName: string; temporaryPassword: string; emailSent: boolean; emailError?: string }> {
   const res = await fetch("/api/admin/employees", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

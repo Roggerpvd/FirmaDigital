@@ -3,6 +3,7 @@ import { Link, useNavigate } from"react-router-dom";
 import { PDFDocument } from"pdf-lib";
 import * as XLSX from"xlsx";
 import { logout } from"../api/auth";
+import LoadingLogo from"../components/LoadingLogo";
 
 import {
  fetchAdminDocuments,
@@ -31,7 +32,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  const [loadingData, setLoadingData] = useState(true);
  const [loadError, setLoadError] = useState<string | null>(null);
 
- const [activeTab, setActiveTab] = useState<"dashboard" |"batches" |"employees" |"reports">("batches");
+ const [activeTab, setActiveTab] = useState<"batches" |"employees" |"reports">("batches");
  const [filterTab, setFilterTab] = useState<"all" |"pending" |"signed">("all");
  const [searchQuery, setSearchQuery] = useState("");
  const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,7 +51,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
  const [newEmployeePosition, setNewEmployeePosition] = useState("");
  const [creatingEmployee, setCreatingEmployee] = useState(false);
- const [generatedPassword, setGeneratedPassword] = useState<{ email: string; password: string; title: string; description: string } | null>(null);
+ const [generatedPassword, setGeneratedPassword] = useState<{ email: string; password: string; title: string; description: string; emailSent: boolean } | null>(null);
 
  // Eliminar empleado
  const [deletingEmployeeCode, setDeletingEmployeeCode] = useState<string | null>(null);
@@ -165,7 +166,10 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  email: result.employee.email,
  password: result.temporaryPassword,
  title:"Empleado creado",
- description:"Comunícale al empleado su correo y esta contraseña temporal. Solo se muestra esta vez.",
+ description: result.emailSent
+ ?"Ya se enviaron sus credenciales de acceso a su correo electrónico."
+ :"No se pudo enviar el correo automáticamente. Comunícale tú mismo esta contraseña temporal (solo se muestra esta vez).",
+ emailSent: result.emailSent,
  });
  setShowEmployeeModal(false);
  setNewEmployeeName("");
@@ -215,7 +219,10 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  email: result.email,
  password: result.temporaryPassword,
  title:"Contraseña restablecida",
- description:`Comunícale a ${result.fullName} su nueva contraseña temporal. Solo se muestra esta vez.`,
+ description: result.emailSent
+ ? `Ya se enviaron las nuevas credenciales de acceso a ${result.fullName} por correo electrónico.`
+ : `No se pudo enviar el correo automáticamente. Comunícale tú mismo a ${result.fullName} esta contraseña temporal (solo se muestra esta vez).`,
+ emailSent: result.emailSent,
  });
  } catch (err: any) {
  setToast({ message: err.message ||"No se pudo restablecer la contraseña.", type:"error" });
@@ -265,7 +272,6 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
 
  const countPending = documents.filter((d) => d.status ==="Pending").length;
  const countSigned = documents.filter((d) => d.status ==="Signed").length;
- const signRate = documents.length ? Math.round((countSigned / documents.length) * 100) : 0;
 
  const employeesList = Object.values(
  documents.reduce((acc, doc) => {
@@ -344,7 +350,7 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  if (loadingData) {
  return (
  <div className="min-h-screen bg-transparent flex items-center justify-center">
- <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
+ <LoadingLogo />
  </div>
  );
  }
@@ -385,19 +391,21 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  {generatedPassword && (
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] flex items-center justify-center p-md">
  <div className="bg-surface-container-lowest/70 backdrop-blur-xl border border-white/60 w-full max-w-md rounded-xl p-xl shadow-2xl ring-1 ring-black/5 text-center">
- <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-lg">
- <span className="material-symbols-outlined text-[28px]">check_circle</span>
+ <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-lg ${generatedPassword.emailSent ?"bg-emerald-50 text-emerald-600" :"bg-amber-50 text-amber-600"}`}>
+ <span className="material-symbols-outlined text-[28px]">{generatedPassword.emailSent ?"mark_email_read" :"warning"}</span>
  </div>
  <h3 className="font-headline-sm text-headline-sm font-bold text-primary mb-xs">{generatedPassword.title}</h3>
  <p className="text-[13px] text-on-surface-variant mb-lg">
  {generatedPassword.description}
  </p>
+ {!generatedPassword.emailSent && (
  <div className="bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg p-md mb-lg text-left space-y-xs shadow-inner">
  <p className="text-[12px] text-on-surface-variant">Correo</p>
  <p className="font-data-mono text-data-mono text-primary">{generatedPassword.email}</p>
  <p className="text-[12px] text-on-surface-variant mt-sm">Contraseña temporal</p>
  <p className="font-data-mono text-data-mono text-primary text-[16px] font-bold">{generatedPassword.password}</p>
  </div>
+ )}
  <button
  onClick={() => setGeneratedPassword(null)}
  className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 transition-all"
@@ -423,7 +431,6 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  </div>
  <nav className="flex-1 space-y-1">
  {[
- { key:"dashboard", label:"Panel General", icon:"dashboard" },
  { key:"batches", label:"Lotes de Boletas", icon:"payments" },
  { key:"employees", label:"Empleados", icon:"group" },
  { key:"reports", label:"Reportes", icon:"assessment" }
@@ -659,53 +666,6 @@ function AdminDashboard({ adminFullName }: AdminDashboardProps) {
  </div>
  )}
  </section>
- </>
- )}
-
- {activeTab ==="dashboard" && (
- <>
- <div className="mb-xl">
- <h2 className="font-headline-md text-headline-md text-primary">Panel General</h2>
- <p className="font-body-md text-body-md text-on-surface-variant mt-xs">Resumen del estado de firmas de tu organización.</p>
- </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-xl">
- {[
- { label:"Total de Boletas", value: documents.length, icon:"description", color:"text-primary" },
- { label:"Firmadas", value: countSigned, icon:"check_circle", color:"text-emerald-600" },
- { label:"Pendientes", value: countPending, icon:"schedule", color:"text-amber-600" },
- { label:"Tasa de Firma", value:`${signRate}%`, icon:"trending_up", color:"text-primary" }
- ].map(card => (
- <div key={card.label} className="bg-surface-container-lowest/10 backdrop-blur-md backdrop-blur-md border border-outline-variant rounded-xl p-lg shadow-sm">
- <div className="flex items-center justify-between mb-sm">
- <span className={`material-symbols-outlined ${card.color}`}>{card.icon}</span>
- </div>
- <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
- <p className="font-body-md text-body-md text-on-surface-variant mt-xs">{card.label}</p>
- </div>
- ))}
- </div>
- <div className="bg-surface-container-lowest/10 backdrop-blur-md backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
- <h3 className="font-headline-sm text-headline-sm text-primary mb-md">Boletas más recientes</h3>
- <div className="space-y-sm">
- {documents.slice(0, 4).map(doc => (
- <div key={doc.id} className="flex items-start gap-md py-sm border-b border-outline-variant last:border-0">
- <span className={`material-symbols-outlined text-[18px] mt-xs ${doc.status ==="Signed" ?"text-emerald-500" :"text-amber-500"}`}>
- {doc.status ==="Signed" ?"check_circle" :"schedule"}
- </span>
- <div>
- <p className="text-[13px] text-on-surface">{doc.name} — {doc.payslipId}</p>
- <p className="text-[11px] text-on-surface-variant mt-xs">{statusLabel(doc.status)} · {doc.date}</p>
- </div>
- </div>
- ))}
- {documents.length === 0 && (
- <p className="text-[13px] text-on-surface-variant">No hay boletas registradas todavía.</p>
- )}
- </div>
- <button onClick={() => setActiveTab("batches")} className="mt-lg bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all">
- Ir a Lotes de Boletas
- </button>
- </div>
  </>
  )}
 

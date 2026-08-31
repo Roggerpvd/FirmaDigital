@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "../_lib/db.js";
+import { isValidEmail, sendCredentialsEmail } from "../_lib/email.js";
 
 function getCookie(req: VercelRequest, name: string): string | null {
   const cookies = req.headers.cookie;
@@ -69,6 +70,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const normalizedEmail = email.trim().toLowerCase();
+
+      // Rechaza correos con formato inválido (typos como "juan@", "juan@empresa",
+      // "juan empresa.com") antes de crear la cuenta y de intentar enviarle nada.
+      if (!isValidEmail(normalizedEmail)) {
+        return res.status(400).json({ error: "El correo ingresado no tiene un formato válido" });
+      }
+
       const randomPassword = generateRandomPassword();
       const passwordHash = await bcrypt.hash(randomPassword, 10);
 
@@ -86,14 +94,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         try {
           const result = await db.sql`
-            INSERT INTO employees (employee_code, full_name, email, position, password_hash)
-            VALUES (${nextCode}, ${fullName}, ${normalizedEmail}, ${position || null}, ${passwordHash})
+            INSERT INTO employees (employee_code, full_name, email, position, password_hash, requires_password_change)
+            VALUES (${nextCode}, ${fullName}, ${normalizedEmail}, ${position || null}, ${passwordHash}, true)
             RETURNING employee_code, full_name, email, position
           `;
+
+          // Envía el correo y la contraseña temporal al correo real del empleado.
+          // Si el envío falla (ej. Gmail SMTP caído), la cuenta igual queda creada:
+          // avisamos al admin con emailSent=false para que se lo comunique a mano.
+          let emailSent = true;
+          let emailError: string | undefined;
+          try {
+            await sendCredentialsEmail({
+              toEmail: normalizedEmail,
+              employeeName: fullName,
+              temporaryPassword: randomPassword,
+            });
+          } catch (err: any) {
+            emailSent = false;
+            emailError = err?.message || "No se pudo enviar el correo";
+            console.error("Error al enviar credenciales por correo:", err);
+          }
 
           return res.status(201).json({
             employee: result.rows[0],
             temporaryPassword: randomPassword,
+            emailSent,
+            emailError,
           });
         } catch (error: any) {
           lastError = error;
@@ -135,8 +162,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const employeeId = employeeResult.rows[0].id;
 
       // Elimina, en orden, todo lo asociado al empleado:
-      // 1) sus boletas (payslips), 2) sus credenciales/accesos (sesiones y magic links),
-      // 3) al final, al empleado mismo. Así queda sin acceso y sin registros.
+      // 1) códigos OTP de firma (dependen de payslips Y de employees, deben ir primero),
+      // 2) sus boletas (payslips), 3) sus credenciales/accesos (sesiones y magic links),
+      // 4) al final, al empleado mismo. Así queda sin acceso y sin registros.
+      // (signature_otp_codes tiene FOREIGN KEY hacia payslips y employees sin CASCADE,
+      // así que si no se borra primero, Postgres rechaza el DELETE de payslips/employees.)
+      await db.sql`DELETE FROM signature_otp_codes WHERE employee_id = ${employeeId}`;
       await db.sql`DELETE FROM payslips WHERE employee_id = ${employeeId}`;
       await db.sql`DELETE FROM sessions WHERE employee_id = ${employeeId}`;
       await db.sql`DELETE FROM magic_links WHERE employee_id = ${employeeId}`;
@@ -144,8 +175,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await db.sql`DELETE FROM employees WHERE id = ${employeeId}`;
 
       return res.status(200).json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al eliminar empleado:", error);
+      if (error?.code === "23503") {
+        return res.status(409).json({
+          error: "No se pudo eliminar: el empleado todavía tiene registros relacionados que impiden borrarlo.",
+        });
+      }
       return res.status(500).json({ error: "Error interno del servidor" });
     }
   }
@@ -171,18 +207,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const passwordHash = await bcrypt.hash(randomPassword, 10);
 
       await db.sql`
-        UPDATE employees SET password_hash = ${passwordHash} WHERE id = ${employee.id}
+        UPDATE employees SET password_hash = ${passwordHash}, requires_password_change = true WHERE id = ${employee.id}
       `;
 
       // Cierra todas las sesiones activas del empleado: con la contraseña vieja invalidada,
       // cualquier sesión abierta (suya o de alguien más que la tuviera) queda desconectada.
       await db.sql`DELETE FROM sessions WHERE employee_id = ${employee.id}`;
 
+      // Igual que al crear la cuenta: le llega por correo su nueva contraseña temporal,
+      // y al ingresar con ella se le pedirá obligatoriamente elegir una propia
+      // (requires_password_change quedó en true arriba).
+      let emailSent = true;
+      let emailError: string | undefined;
+      try {
+        await sendCredentialsEmail({
+          toEmail: employee.email,
+          employeeName: employee.full_name,
+          temporaryPassword: randomPassword,
+          isReset: true,
+        });
+      } catch (err: any) {
+        emailSent = false;
+        emailError = err?.message || "No se pudo enviar el correo";
+        console.error("Error al enviar credenciales por correo:", err);
+      }
+
       return res.status(200).json({
         success: true,
         email: employee.email,
         fullName: employee.full_name,
         temporaryPassword: randomPassword,
+        emailSent,
+        emailError,
       });
     } catch (error) {
       console.error("Error al restablecer contraseña de empleado:", error);

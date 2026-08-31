@@ -38,13 +38,17 @@ function SplashScreen({ onFinish }: SplashScreenProps) {
         <img
           src="/mister-pan-watermark.png"
           alt="Mister Pan"
-          className="w-80 h-80 object-contain"        />
-        <div className="w-6 h-6 border-2 border-outline-variant border-t-primary rounded-full animate-spin" />
+          className="w-80 h-80 object-contain animate-[loadingPulse_1.4s_ease-in-out_infinite]"        />
+        <p className="font-body-md text-body-md text-on-surface-variant tracking-wide">Cargando</p>
       </div>
       <style>{`
         @keyframes splashPop {
           0% { opacity: 0; transform: scale(0.92); }
           100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes loadingPulse {
+          0%, 100% { transform: scale(0.88); opacity: 0.75; }
+          50% { transform: scale(1.05); opacity: 1; }
         }
       `}</style>
     </div>

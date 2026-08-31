@@ -4,6 +4,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "../_lib/db.js";
+import { isValidEmail } from "../_lib/email.js";
 
 const ADMIN_SESSION_HOURS = 24 * 7;
 const EMPLOYEE_SESSION_HOURS = 24 * 7;
@@ -78,6 +79,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Rechaza formatos claramente inválidos antes de tocar la base de datos
+    // (evita, de paso, gastar intentos de login en algo que nunca va a existir).
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ error: "Ingresa un correo con formato válido" });
+    }
 
     // Si este correo tiene demasiados intentos fallidos recientes, lo bloqueamos temporalmente.
     const lockedMinutes = await checkLockout(normalizedEmail);

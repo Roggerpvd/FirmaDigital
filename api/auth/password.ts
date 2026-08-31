@@ -91,7 +91,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (session.user_type === "admin") {
       await db.sql`UPDATE admins SET password_hash = ${newHash} WHERE id = ${userId}`;
     } else {
-      await db.sql`UPDATE employees SET password_hash = ${newHash} WHERE id = ${userId}`;
+      // Al cambiar su propia contraseña, el empleado deja de estar bajo la
+      // contraseña temporal creada por el admin: se levanta el bloqueo de firma.
+      await db.sql`UPDATE employees SET password_hash = ${newHash}, requires_password_change = false WHERE id = ${userId}`;
     }
 
     // Cierra todas las demás sesiones activas de esta cuenta (deja viva solo la actual).

@@ -10,6 +10,7 @@ export interface EmployeeSession {
   fullName: string;
   email: string;
   position: string | null;
+  requiresPasswordChange?: boolean;
 }
 
 export type Session = AdminSession | EmployeeSession;

@@ -8,6 +8,8 @@ import { fetchCurrentSession } from "../api/auth";
 import { fetchMyPayslips } from "../api/payslips";
 import AdminDashboard from "./AdminDashboard";
 import EmployeeDashboard from "./EmployeeDashboard";
+import ForcePasswordChange from "./ForcePasswordChange";
+import LoadingLogo from "../components/LoadingLogo";
 
 function AppGate() {
   const [session, setSession] = useState<Session | null | "loading">("loading");
@@ -30,7 +32,7 @@ function AppGate() {
   if (session === "loading") {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
+        <LoadingLogo />
       </div>
     );
   }
@@ -43,10 +45,26 @@ function AppGate() {
     return <AdminDashboard adminFullName={session.fullName} />;
   }
 
+  // Bloqueo de no-repudio: mientras el empleado no reemplace la contraseña
+  // temporal creada por el admin, no ve boletas ni puede firmar nada.
+  // (El bloqueo real, a prueba de manipulación desde el navegador, vive en
+  // el backend; esto solo evita que el empleado tenga que descubrirlo
+  // a través de un error al intentar firmar.)
+  if (session.requiresPasswordChange) {
+    return (
+      <ForcePasswordChange
+        onChanged={() => {
+          setSession("loading");
+          fetchCurrentSession().then(setSession);
+        }}
+      />
+    );
+  }
+
   if (payslipsLoading) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
+        <LoadingLogo />
       </div>
     );
   }

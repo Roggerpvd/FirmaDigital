@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchMySignature } from "../api/signature";
+import { requestSignatureOtp } from "../api/otp";
+import LoadingLogo from "../components/LoadingLogo";
 
 interface PayslipData {
   id: string;
@@ -22,8 +24,7 @@ const MOCK_PAYSLIP: PayslipData = {
   issueDate: "13 jul 2026",
 };
 
-type SignMode = "draw" | "upload";
-type FlowStep = "review" | "signing" | "confirm" | "submitting" | "success";
+type FlowStep = "review" | "signing" | "confirm" | "otp" | "submitting" | "success";
 
 interface EmployeeSignPortalProps {
   payslip?: PayslipData;
@@ -31,14 +32,19 @@ interface EmployeeSignPortalProps {
 
 function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps) {
   const [step, setStep] = useState<FlowStep>("review");
-  const [signMode, setSignMode] = useState<SignMode>("draw");
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [canvasIsEmpty, setCanvasIsEmpty] = useState(true);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [signedAt, setSignedAt] = useState<string>("");
   const [documentHash, setDocumentHash] = useState<string>("");
   const [isSigned, setIsSigned] = useState(false);
+  // Estado del paso OTP (segundo factor de autenticación al firmar)
+  const [otpCode, setOtpCode] = useState("");
+  const [otpAgreed, setOtpAgreed] = useState(false);
+  const [otpMaskedEmail, setOtpMaskedEmail] = useState<string>("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpCooldown, setOtpCooldown] = useState(0);
   // Se incrementa tras firmar para forzar que el <iframe> recargue el PDF actualizado
   // (nuestro endpoint /view ya manda Cache-Control: no-store, esto solo evita que
   // el iframe siga mostrando en memoria la versión que ya tenía cargada).
@@ -76,7 +82,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       ctx.lineJoin = "round";
       ctx.strokeStyle = "#191c1e";
     }
-  }, [step, signMode]);
+  }, [step]);
 
   const getPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -123,54 +129,74 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadError(null);
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.type !== "image/png") {
-      setUploadError("Solo se admiten archivos PNG.");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setUploadError("La imagen no debe superar los 2MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setSignatureDataUrl(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
   const handleContinueToConfirm = () => {
-    if (signMode === "draw") {
-      const canvas = canvasRef.current;
-      if (canvas && !canvasIsEmpty) {
-        setSignatureDataUrl(canvas.toDataURL("image/png"));
-      }
+    const canvas = canvasRef.current;
+    if (canvas && !canvasIsEmpty) {
+      setSignatureDataUrl(canvas.toDataURL("image/png"));
     }
     setStep("confirm");
   };
 
-  const canContinue = signMode === "draw" ? !canvasIsEmpty : !!signatureDataUrl;
+  const canContinue = !canvasIsEmpty;
+
+  // Cuenta regresiva para el botón de "reenviar código"
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => setOtpCooldown((s) => Math.max(s - 1, 0)), 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
+  const sendOtp = async () => {
+    setOtpSending(true);
+    setOtpError(null);
+    const result = await requestSignatureOtp(payslip.id);
+    setOtpSending(false);
+
+    if (!result.success) {
+      setOtpError(result.error || "No se pudo enviar el código");
+      return;
+    }
+
+    setOtpMaskedEmail(result.maskedEmail || "");
+    setOtpCooldown(45);
+  };
+
+  const handleGoToOtp = () => {
+    setOtpCode("");
+    setOtpAgreed(false);
+    setOtpError(null);
+    setStep("otp");
+    sendOtp();
+  };
 
   const handleSubmit = async () => {
+    if (otpCode.trim().length !== 6) {
+      setOtpError("Ingresa el código de 6 dígitos que enviamos a tu correo");
+      return;
+    }
+    if (!otpAgreed) {
+      setOtpError("Debes aceptar la declaración para continuar");
+      return;
+    }
+
     setStep("submitting");
 
     try {
       const canvas = canvasRef.current;
-      const finalSignature = signMode === "draw" && canvas && !canvasIsEmpty ? canvas.toDataURL("image/png") : signatureDataUrl;
+      const finalSignature = canvas && !canvasIsEmpty ? canvas.toDataURL("image/png") : signatureDataUrl;
 
       const res = await fetch(`/api/payslips/${payslip.id}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ signatureDataUrl: finalSignature }),
+        body: JSON.stringify({ signatureDataUrl: finalSignature, otpCode: otpCode.trim() }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "No se pudo firmar la boleta");
-        setStep("confirm");
+        setOtpError(data.error || "No se pudo firmar la boleta");
+        setStep("otp");
         return;
       }
 
@@ -180,8 +206,8 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
       setRefreshKey((k) => k + 1);
       setStep("success");
     } catch {
-      alert("No se pudo conectar con el servidor");
-      setStep("confirm");
+      setOtpError("No se pudo conectar con el servidor");
+      setStep("otp");
     }
   };
 
@@ -237,7 +263,7 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
         {/* Cargando: revisando si ya existe una firma guardada */}
         {checkingSavedSignature && (
           <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
+            <LoadingLogo size={64} />
           </div>
         )}
 
@@ -295,73 +321,31 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                     <button onClick={() => setStep("review")} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
                   </div>
 
-                  {/* Tabs de método de firma */}
-                  <div className="flex gap-sm mb-lg bg-surface-container-low/10 backdrop-blur-md rounded-lg p-xs">
+                  <div>
+                    <p className="text-[12px] text-on-surface-variant mb-sm">Usa el mouse o tu dedo para firmar dentro del recuadro.</p>
+                    <div className="relative">
+                      <canvas
+                        ref={canvasRef}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
+                        className="w-full h-56 bg-surface-container-low/10 backdrop-blur-md border-2 border-dashed border-outline-variant rounded-lg touch-none cursor-crosshair"
+                      />
+                      {canvasIsEmpty && (
+                        <p className="absolute inset-0 flex items-center justify-center text-on-surface-variant text-[13px] pointer-events-none opacity-50">
+                          Firma aquí
+                        </p>
+                      )}
+                    </div>
                     <button
-                      onClick={() => { setSignMode("draw"); setUploadError(null); }}
-                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "draw" ? "bg-surface-container-lowest/10 backdrop-blur-md text-primary shadow-sm" : "text-on-surface-variant"}`}
+                      onClick={clearCanvas}
+                      className="mt-sm text-[12px] font-semibold text-primary hover:underline flex items-center gap-xs"
                     >
-                      <span className="material-symbols-outlined text-[18px]">draw</span>
-                      Dibujar firma
-                    </button>
-                    <button
-                      onClick={() => { setSignMode("upload"); }}
-                      className={`flex-1 py-sm rounded-md text-[13px] font-semibold transition-colors flex items-center justify-center gap-xs ${signMode === "upload" ? "bg-surface-container-lowest/10 backdrop-blur-md text-primary shadow-sm" : "text-on-surface-variant"}`}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                      Subir imagen PNG
+                      <span className="material-symbols-outlined text-[16px]">refresh</span>
+                      Limpiar firma
                     </button>
                   </div>
-
-                  {signMode === "draw" ? (
-                    <div>
-                      <p className="text-[12px] text-on-surface-variant mb-sm">Usa el mouse o tu dedo para firmar dentro del recuadro.</p>
-                      <div className="relative">
-                        <canvas
-                          ref={canvasRef}
-                          onPointerDown={handlePointerDown}
-                          onPointerMove={handlePointerMove}
-                          onPointerUp={handlePointerUp}
-                          onPointerLeave={handlePointerUp}
-                          className="w-full h-56 bg-surface-container-low/10 backdrop-blur-md border-2 border-dashed border-outline-variant rounded-lg touch-none cursor-crosshair"
-                        />
-                        {canvasIsEmpty && (
-                          <p className="absolute inset-0 flex items-center justify-center text-on-surface-variant text-[13px] pointer-events-none opacity-50">
-                            Firma aquí
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={clearCanvas}
-                        className="mt-sm text-[12px] font-semibold text-primary hover:underline flex items-center gap-xs"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">refresh</span>
-                        Limpiar firma
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-[12px] text-on-surface-variant mb-sm">Sube una imagen PNG de tu firma (fondo transparente recomendado, máx. 2MB).</p>
-                      {!signatureDataUrl ? (
-                        <label className="custom-dashed h-56 rounded-lg flex flex-col items-center justify-center gap-sm cursor-pointer hover:bg-surface-container-low/10 backdrop-blur-md transition-colors relative">
-                          <input type="file" accept="image/png" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                          <span className="material-symbols-outlined text-[40px] text-outline opacity-40">image</span>
-                          <p className="text-[13px] text-on-surface-variant">Haz clic para seleccionar tu firma (.png)</p>
-                        </label>
-                      ) : (
-                        <div className="h-56 bg-surface-container-low/10 backdrop-blur-md border border-outline-variant rounded-lg flex items-center justify-center relative p-md">
-                          <img src={signatureDataUrl} alt="Firma cargada" className="max-h-full max-w-full object-contain" />
-                          <button
-                            onClick={() => setSignatureDataUrl(null)}
-                            className="absolute top-sm right-sm material-symbols-outlined text-[18px] text-outline hover:text-error bg-surface-container-lowest/10 backdrop-blur-md rounded-full p-xs"
-                          >
-                            close
-                          </button>
-                        </div>
-                      )}
-                      {uploadError && <p className="text-[12px] text-error mt-sm">{uploadError}</p>}
-                    </div>
-                  )}
 
                   <button
                     onClick={handleContinueToConfirm}
@@ -397,12 +381,12 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                   </label>
 
                   <button
-                    onClick={handleSubmit}
+                    onClick={handleGoToOtp}
                     disabled={!agreed}
                     className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-sm"
                   >
-                    <span className="material-symbols-outlined text-[20px]">send</span>
-                    Enviar Boleta Firmada
+                    <span className="material-symbols-outlined text-[20px]">mail</span>
+                    Enviar Código de Verificación
                   </button>
 
                   <button
@@ -419,11 +403,64 @@ function EmployeeSignPortal({ payslip = MOCK_PAYSLIP }: EmployeeSignPortalProps)
                 </div>
               )}
 
+              {/* Paso: verificación OTP (segundo factor, por correo) */}
+              {step === "otp" && (
+                <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm">
+                  <div className="flex items-center justify-between mb-lg">
+                    <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Verifica tu Identidad</h2>
+                    <button onClick={() => setStep("confirm")} className="material-symbols-outlined text-outline hover:text-primary transition-colors">close</button>
+                  </div>
+
+                  <p className="text-[12px] text-on-surface-variant mb-lg leading-relaxed">
+                    {otpMaskedEmail
+                      ? <>Enviamos un código de 6 dígitos a <span className="font-semibold text-primary">{otpMaskedEmail}</span>. Ingrésalo para confirmar tu firma.</>
+                      : "Enviando el código a tu correo registrado..."}
+                  </p>
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    className="w-full text-center text-[28px] tracking-[0.5em] font-semibold bg-surface-container-low/10 backdrop-blur-md border border-outline-variant rounded-lg py-md mb-md text-primary"
+                  />
+
+                  {otpError && <p className="text-[12px] text-error mb-md">{otpError}</p>}
+
+                  <button
+                    type="button"
+                    onClick={sendOtp}
+                    disabled={otpSending || otpCooldown > 0}
+                    className="text-[12px] font-semibold text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed mb-lg"
+                  >
+                    {otpCooldown > 0 ? `Reenviar código (${otpCooldown}s)` : otpSending ? "Enviando..." : "Reenviar código"}
+                  </button>
+
+                  <label className="flex items-start gap-sm mb-lg cursor-pointer">
+                    <input type="checkbox" checked={otpAgreed} onChange={(e) => setOtpAgreed(e.target.checked)} className="mt-1" />
+                    <span className="text-[12px] text-on-surface-variant leading-relaxed">
+                      Acepto que el ingreso de este código OTP constituye mi firma electrónica y declaro conformidad con los montos de esta boleta.
+                    </span>
+                  </label>
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={otpCode.length !== 6 || !otpAgreed}
+                    className="w-full bg-primary text-on-primary px-lg py-md rounded-lg font-body-md text-body-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-sm"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">send</span>
+                    Confirmar y Firmar
+                  </button>
+                </div>
+              )}
+
               {/* Paso: enviando */}
               {step === "submitting" && (
                 <div className="bg-surface-container-lowest/10 backdrop-blur-md border border-outline-variant rounded-xl p-xl shadow-sm flex flex-col items-center justify-center py-16">
-                  <div className="w-10 h-10 border-4 border-outline-variant border-t-primary rounded-full animate-spin mb-lg"></div>
-                  <p className="text-body-md font-body-md text-on-surface-variant">Enviando tu boleta firmada...</p>
+                  <LoadingLogo label="Enviando tu boleta firmada..." />
                 </div>
               )}
 

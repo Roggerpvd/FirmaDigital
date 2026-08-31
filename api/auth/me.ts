@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (session.user_type === "employee") {
       const employeeResult = await db.sql`
-        SELECT id, employee_code, full_name, email, position FROM employees WHERE id = ${session.employee_id}
+        SELECT id, employee_code, full_name, email, position, requires_password_change FROM employees WHERE id = ${session.employee_id}
       `;
       const employee = employeeResult.rows[0];
       return res.status(200).json({
@@ -78,6 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         fullName: employee.full_name,
         email: employee.email,
         position: employee.position,
+        requiresPasswordChange: !!employee.requires_password_change,
       });
     }
 
