@@ -137,6 +137,7 @@ function EmployeeDashboard({ employee, initialPayslips }: EmployeeDashboardProps
           </button>
         </div>
 
+
         {/* Lista de boletas */}
         <div className="space-y-md">
           {filteredPayslips.length > 0 ? (

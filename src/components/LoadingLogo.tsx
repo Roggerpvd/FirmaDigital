@@ -1,13 +1,5 @@
-// src/components/LoadingLogo.tsx
-//
-// Indicador de carga reutilizable: el logo de Mister Pan pulsa
-// (se acerca y se aleja) en lugar de una rueda girando, con el
-// texto "Cargando" debajo. Puramente visual, sin llamadas a la API.
-
 interface LoadingLogoProps {
-  /** Texto mostrado debajo del logo. Por defecto "Cargando". */
   label?: string;
-  /** Tamaño del logo en px. Por defecto 96. */
   size?: number;
 }
 

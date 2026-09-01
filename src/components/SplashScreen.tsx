@@ -1,8 +1,3 @@
-// src/components/SplashScreen.tsx
-//
-// Pantalla de introducción que se muestra brevemente al abrir la app,
-// con el logo de Mister Pan. Es puramente visual (sin llamadas a la API),
-// así que no agrega ninguna función serverless nueva.
 
 import { useEffect, useState } from "react";
 

@@ -96,6 +96,7 @@ function Login() {
                   type="email"
                   required
                   autoFocus
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@correo.pe"
@@ -114,6 +115,10 @@ function Login() {
 
           {step === "password" && (
             <form onSubmit={handlePasswordSubmit} className="space-y-md">
+              {/* Campo oculto: sin esto, el navegador pierde de vista el correo
+                  (que solo se mostró en el paso anterior) y no puede ofrecer
+                  guardar la contraseña asociada a ese usuario. */}
+              <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
               <div>
                 <p className="text-[13px] text-on-surface-variant mb-md">
                   Iniciando sesión como <span className="font-semibold text-primary">{email}</span>
@@ -126,6 +131,7 @@ function Login() {
                     type={showPassword ? "text" : "password"}
                     required
                     autoFocus
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"

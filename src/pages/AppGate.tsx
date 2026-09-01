@@ -53,6 +53,7 @@ function AppGate() {
   if (session.requiresPasswordChange) {
     return (
       <ForcePasswordChange
+        email={session.email}
         onChanged={() => {
           setSession("loading");
           fetchCurrentSession().then(setSession);

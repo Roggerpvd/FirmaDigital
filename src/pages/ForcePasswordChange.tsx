@@ -13,10 +13,11 @@ import { changePassword } from "../api/auth";
 
 interface ForcePasswordChangeProps {
   temporaryPassword?: string;
+  email?: string;
   onChanged: () => void;
 }
 
-function ForcePasswordChange({ onChanged }: ForcePasswordChangeProps) {
+function ForcePasswordChange({ email, onChanged }: ForcePasswordChangeProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -59,6 +60,8 @@ function ForcePasswordChange({ onChanged }: ForcePasswordChangeProps) {
 
         <div className="bg-surface-container-lowest/70 backdrop-blur-xl border border-white/60 rounded-xl p-xl shadow-2xl ring-1 ring-black/5">
           <form onSubmit={handleSubmit} className="space-y-md">
+            {/* Ayuda al navegador a asociar la contraseña nueva con este usuario. */}
+            {email && <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />}
             <div>
               <label className="block text-[12px] font-bold uppercase tracking-wider text-on-surface-variant mb-xs">
                 Contraseña temporal
@@ -68,6 +71,7 @@ function ForcePasswordChange({ onChanged }: ForcePasswordChangeProps) {
                   type={showCurrentPassword ? "text" : "password"}
                   required
                   autoFocus
+                  autoComplete="current-password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   className="w-full bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -97,6 +101,7 @@ function ForcePasswordChange({ onChanged }: ForcePasswordChangeProps) {
                   required
                   minLength={8}
                   maxLength={12}
+                  autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -126,6 +131,7 @@ function ForcePasswordChange({ onChanged }: ForcePasswordChangeProps) {
                   required
                   minLength={8}
                   maxLength={12}
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-surface-container/60 backdrop-blur-xl border border-white/40 rounded-lg px-md py-sm pr-11 font-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
